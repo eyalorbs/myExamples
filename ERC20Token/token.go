@@ -3,14 +3,14 @@ package main
 import (
 	"github.com/orbs-network/orbs-contract-sdk/go/sdk"
 	"github.com/orbs-network/orbs-contract-sdk/go/sdk/address"
-	"github.com/orbs-network/orbs-contract-sdk/go/sdk/safemath/safeuint64"
 	"github.com/orbs-network/orbs-contract-sdk/go/sdk/state"
+	"math"
 )
 
-var PUBLIC = sdk.Export(totalSupply, balanceOf, allowance, transfer, approve, transferFrom, 	getSymbol, getName, getDecimals)
+var PUBLIC = sdk.Export(totalSupply, balanceOf, allowance, transfer, approve, transferFrom, getSymbol, getName, getDecimals)
 var SYSTEM = sdk.Export(_init)
 
-func _init(){
+func _init() {
 
 	state.WriteStringByKey("symbol", "E20")
 	state.WriteStringByKey("name", "ERC20Token")
@@ -20,28 +20,23 @@ func _init(){
 }
 
 //the following functions are not an ERC20 requirement, but it is necessary in order to read these variables from the state
-func getSymbol() string{
+func getSymbol() string {
 	return state.ReadStringByKey("symbol")
 }
 
-func getName() string{
+func getName() string {
 	return state.ReadStringByKey("name")
 }
 
-func getDecimals()uint32{
+func getDecimals() uint32 {
 	return state.ReadUint32ByKey("decimals")
 }
 
-
-
-
-
-
-func totalSupply() (amount uint64){
+func totalSupply() (amount uint64) {
 	return state.ReadUint64ByKey("totalSupply")
 }
 
-func balanceOf(tokenOwner []byte)(balance uint64){
+func balanceOf(tokenOwner []byte) (balance uint64) {
 	//validate the address
 	address.ValidateAddress(tokenOwner)
 
@@ -52,8 +47,7 @@ func balanceOf(tokenOwner []byte)(balance uint64){
 //concatenation of the tokenOwner address and the spender address
 //we do not use maps because as of writing this the orbs network doesn't support maps
 
-
-func allowance(tokenOwner, spender []byte) (remaining uint64){
+func allowance(tokenOwner, spender []byte) (remaining uint64) {
 
 	//ensure that the addresses are valid
 	address.ValidateAddress(tokenOwner)
@@ -65,44 +59,82 @@ func allowance(tokenOwner, spender []byte) (remaining uint64){
 	return state.ReadUint64ByAddress(key)
 }
 
-
-
-
-func transfer(to []byte, tokens uint64){
+func transfer(to []byte, tokens uint64) {
 
 	//validate the address
 	address.ValidateAddress(to)
 
 	//update spender's tokens
-	state.WriteUint64ByAddress(address.GetCallerAddress(), safeuint64.Sub(state.ReadUint64ByAddress(address.GetCallerAddress()), tokens))
+	state.WriteUint64ByAddress(address.GetSignerAddress(), Sub(state.ReadUint64ByAddress(address.GetSignerAddress()), tokens))
 
 	//update receiver's tokens
-	state.WriteUint64ByAddress(to, safeuint64.Add(state.ReadUint64ByAddress(to), tokens))
+	state.WriteUint64ByAddress(to, Add(state.ReadUint64ByAddress(to), tokens))
 
 	//TODO: add an event
 
 }
 
-func approve(spender []byte, tokens uint64){
+func approve(spender []byte, tokens uint64) {
+	//validate address
+	address.ValidateAddress(spender)
 	//get the key
-	key := append(address.GetCallerAddress(), spender...)
-
-	state.WriteUint64ByAddress(key, safeuint64.Add(state.ReadUint64ByAddress(key), tokens))
+	key := append(address.GetSignerAddress(), spender...)
+	state.WriteUint64ByAddress(key, Add(state.ReadUint64ByAddress(key), tokens))
 
 	//TODO: add an event
 }
 
-func transferFrom(from, to []byte, tokens uint64){
+func transferFrom(from, to []byte, tokens uint64) {
+	//validate addresses
+	address.ValidateAddress(from)
+	address.ValidateAddress(to)
+
 	//get the key
-	key := append(from, address.GetCallerAddress()...)
+	s := []byte{}
+	s = append(s, from...)
+	s = append(s, address.GetCallerAddress()...)
+	key := s
+	//key := []byte {235, 5, 158, 87, 198, 78, 119, 79, 175, 230, 78, 143, 74, 68, 126, 244, 233, 92, 46, 254, 111, 221, 182, 216, 242, 248, 103, 4, 254, 37, 220, 243, 98, 172, 119, 107, 219, 23, 231, 26}
 
 	//update token owner account
-	state.WriteUint64ByAddress(from, safeuint64.Sub(state.ReadUint64ByAddress(from), tokens))
+	state.WriteUint64ByAddress(from, Sub(state.ReadUint64ByAddress(from), tokens))
 
 	//update allowance
-	state.WriteUint64ByAddress(key, safeuint64.Sub(state.ReadUint64ByAddress(key), tokens))
+	state.WriteUint64ByAddress(key, Sub(state.ReadUint64ByAddress(key), tokens))
 
 	//update receiver's tokens
-	state.WriteUint64ByAddress(to, safeuint64.Add(state.ReadUint64ByAddress(key), tokens))
+	state.WriteUint64ByAddress(to, Add(state.ReadUint64ByAddress(to), tokens))
 }
 
+//delete these functions once gamma is updated:
+
+func Add(x uint64, y uint64) uint64 {
+	if y > math.MaxUint64-x {
+		panic("integer overflow on add")
+	}
+	return x + y
+}
+
+func Sub(x uint64, y uint64) uint64 {
+	if x < y {
+		panic("integer overflow on sub")
+	}
+	return x - y
+}
+
+func Mul(x uint64, y uint64) uint64 {
+	if x == 0 || y == 0 {
+		return 0
+	}
+	if y > math.MaxUint64/x {
+		panic("integer overflow on mul")
+	}
+	return x * y
+}
+
+func Mod(x uint64, y uint64) uint64 {
+	if y == 0 {
+		panic("division by zero")
+	}
+	return x % y
+}

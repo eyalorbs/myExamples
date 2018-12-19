@@ -1,6 +1,6 @@
 {
   "ContractName": "ERC20Token",
-  "MethodName": "transfer",
+  "MethodName": "transferFrom",
   "Arguments": [
     {
       "Type": "gamma:keys-file-address",
@@ -17,3 +17,4 @@
 
   ]
 }
+

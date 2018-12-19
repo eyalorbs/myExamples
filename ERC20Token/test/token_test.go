@@ -1,7 +1,6 @@
 package test
 
 import (
-
 	"github.com/orbs-network/orbs-contract-sdk/go/testing/gamma"
 	"strings"
 	"testing"
@@ -36,33 +35,32 @@ func Test(t *testing.T) {
 	}
 
 	//check the allowance of user2 after approval
-	out = gammaCli.Run("read -i ../jsons/allowance-user1-user2.json -signer user3")
-	if !strings.Contains(out,`"Value": "50"` ){
+	out = gammaCli.Run("read -i ../jsons/allowance-user1-user2.json")
+	if !strings.Contains(out, `"Value": "50"`) {
 		t.Fatal("valued of approval of user2 failed")
 	}
 
-
 	//check the allowance of user 3
 	out = gammaCli.Run("read -i ../jsons/allowance-user1-user3.json -signer user3")
-	if !strings.Contains(out,`"Value": "0"` ){
+	if !strings.Contains(out, `"Value": "0"`) {
 		t.Fatal("user3 appears to have an allowance from user1")
 	}
 
 	//check if transferFrom was successful
 	out = gammaCli.Run("send-tx -i ../jsons/transferFrom-user1-to-user3.json -signer user2")
 	if !strings.Contains(out, `"ExecutionResult": "SUCCESS"`) {
-		t.Fatal("transferFrom falied")
+		t.Fatal("transfer From failed")
 	}
 
 	//check the balance of user3 after transfer
 	out = gammaCli.Run("read -i ../jsons/balanceOf-user3.json")
-	if !strings.Contains(out,`"Value": "20"` ){
+	if !strings.Contains(out, `"Value": "20"`) {
 		t.Fatal("value of user3 after transferFrom failed")
 	}
 
 	//check the balance of user1 after transfer
 	out = gammaCli.Run("read -i ../jsons/balanceOf-user1.json")
-	if !strings.Contains(out,`"Value": "999999999999999980"` ){
+	if !strings.Contains(out, `"Value": "999999999999999980"`) {
 		t.Fatal("value of user1 after transferFrom failed")
 	}
 
@@ -74,13 +72,13 @@ func Test(t *testing.T) {
 
 	//check the balance of user3 after transfer
 	out = gammaCli.Run("read -i ../jsons/balanceOf-user3.json")
-	if !strings.Contains(out,`"Value": "10"` ){
+	if !strings.Contains(out, `"Value": "10"`) {
 		t.Fatal("value of user3 after transferFrom failed")
 	}
 
 	//check the balance of user2 after transfer
-	out = gammaCli.Run("read -i ../jsons/balanceOf-user1.json")
-	if !strings.Contains(out,`"Value": "10"` ){
+	out = gammaCli.Run("read -i ../jsons/balanceOf-user2.json")
+	if !strings.Contains(out, `"Value": "10"`) {
 		t.Fatal("value of user1 after transferFrom failed")
 	}
 
