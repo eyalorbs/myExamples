@@ -1,0 +1,11 @@
+{
+  "ContractName": "ERC20Token",
+  "MethodName": "balanceOf",
+  "Arguments": [
+    {
+      "Type": "gamma:keys-file-address",
+      "Value": "user1"
+    }
+
+  ]
+}
