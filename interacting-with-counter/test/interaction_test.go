@@ -16,7 +16,7 @@ func Test(t *testing.T) {
 		t.Fatal("deploy failed")
 	}
 
-	out = gammaCli.Run("deploy -name MyCounter -code ../../counter/counter.go")
+	out = gammaCli.Run("deploy -name MyCounter12 -code ../../counter/counter.go")
 	if !strings.Contains(out, `"ExecutionResult": "SUCCESS"`) {
 		t.Fatal("deploy failed")
 	}

@@ -8,17 +8,17 @@ import (
 var PUBLIC = sdk.Export(add, get)
 var SYSTEM = sdk.Export(_init)
 
-func _init(){
+func _init() {
 
 }
 
-func add(amount uint64){
-	service.CallMethod("MyCounter", "add", amount)
+func add(amount uint64) {
+	service.CallMethod("MyCounter12", "add", amount)
 }
 
-func get()(count uint64){
-	temp := service.CallMethod("MyCounter", "get")
-	if num, ok :=temp[0].(uint64); ok{
+func get() (count uint64) {
+	temp := service.CallMethod("MyCounter12", "get")
+	if num, ok := temp[0].(uint64); ok {
 		return num
 	}
 	panic("unexpected return from counter contract")
