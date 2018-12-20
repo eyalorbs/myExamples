@@ -9,7 +9,7 @@ import (
 func Test_testNet(t *testing.T) {
 	gammaCli := gamma.Cli().Start()
 	defer gammaCli.Stop()
-
+	//no need to deploy contract, it's already deployed
 	//check output
 	out := gammaCli.Run("read -env testnet42 -i ../jsons/greet.json")
 	if !strings.Contains(out, `"Value": "hello world!"`) {

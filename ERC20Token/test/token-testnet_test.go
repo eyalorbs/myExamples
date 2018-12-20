@@ -10,6 +10,7 @@ func Test_TestNet(t *testing.T) {
 	gammaCli := gamma.Cli().Start()
 	defer gammaCli.Stop()
 
+	//no need to deploy contract, it's already deployed
 	//check if the total amount is okay
 	out := gammaCli.Run("read -env testnet42 -i ../jsons/totalSupply.json")
 	if !strings.Contains(out, `"Value": "1000000000000000000"`) {

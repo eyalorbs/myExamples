@@ -11,7 +11,7 @@ func Test(t *testing.T) {
 	defer gammaCli.Stop()
 
 	//check if the contract was successfully deployed
-	out := gammaCli.Run("deploy -name helloWorld -code ../helloWorld.go -signer user1")
+	out := gammaCli.Run("deploy -name helloWorld12 -code ../helloWorld.go -signer user1")
 	if !strings.Contains(out, `"ExecutionResult": "SUCCESS"`) {
 		t.Fatal("deploy failed")
 	}
