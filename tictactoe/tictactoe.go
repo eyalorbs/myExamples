@@ -107,7 +107,7 @@ func startGame() (feedback string) {
 	return "started new game"
 }
 
-func play(box uint32) {
+func play(box uint32) (feedback string) {
 	//get the games
 	var games Games
 	byteGames := state.ReadBytesByKey("games")
@@ -117,6 +117,10 @@ func play(box uint32) {
 	}
 	//call the method in order to play
 	games.play(box)
+	if checkIfWon() == 1 {
+		return "congrats, you won"
+	}
+	return getBoard()
 
 }
 func (games *Games) play(box uint32) {

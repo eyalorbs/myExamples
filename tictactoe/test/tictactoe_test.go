@@ -70,14 +70,8 @@ func Test(t *testing.T) {
 	}
 	//user2 should play
 	out = gammaCli.Run("send-tx -i ../jsons/play-0.json -signer user2")
-	if !strings.Contains(out, `"ExecutionResult": "SUCCESS"`) {
-		t.Fatal("user2 failed to play")
-	}
-
-	//check if the board was successfully updated
-	out = gammaCli.Run("read -i ../jsons/getBoard.json")
 	if !strings.Contains(out, `"Value": "X--------"`) {
-		t.Fatal("updating board failed")
+		t.Fatal("user2 failed to play")
 	}
 
 	//user1 should be stopped from playing, the spot is taken
@@ -88,49 +82,26 @@ func Test(t *testing.T) {
 
 	//user1 should be stopped from playing, the spot is taken
 	out = gammaCli.Run("send-tx -i ../jsons/play-1.json -signer user1")
-	if !strings.Contains(out, `"ExecutionResult": "SUCCESS"`) {
-		t.Fatal("user1 failed to play")
-	}
-
-	//check if the board was successfully updated
-	out = gammaCli.Run("read -i ../jsons/getBoard.json")
 	if !strings.Contains(out, `"Value": "XO-------"`) {
 		t.Fatal("updating board failed")
 	}
 
 	//user2 should play
 	out = gammaCli.Run("send-tx -i ../jsons/play-3.json -signer user2")
-	if !strings.Contains(out, `"ExecutionResult": "SUCCESS"`) {
-		t.Fatal("user2 failed to play")
+	if !strings.Contains(out, `"Value": "XO-X-----"`) {
+		t.Fatal("updating board failed")
 	}
 
 	//user1 should be stopped from playing, the spot is taken
 	out = gammaCli.Run("send-tx -i ../jsons/play-4.json -signer user1")
-	if !strings.Contains(out, `"ExecutionResult": "SUCCESS"`) {
-		t.Fatal("user1 failed to play")
-	}
-
-	//check if the board was successfully updated
-	out = gammaCli.Run("read -i ../jsons/getBoard.json")
 	if !strings.Contains(out, `"Value": "XO-XO----"`) {
 		t.Fatal("updating board failed")
 	}
 
 	//user2 should play
 	out = gammaCli.Run("send-tx -i ../jsons/play-6.json -signer user2")
-	if !strings.Contains(out, `"ExecutionResult": "SUCCESS"`) {
-		t.Fatal("user2 failed to play")
-	}
-	//check if the board was successfully updated
-	out = gammaCli.Run("read -i ../jsons/getBoard.json")
-	if !strings.Contains(out, `"Value": "XO-XO-X--"`) {
-		t.Fatal("updating board failed")
-	}
-
-	//check if won
-	out = gammaCli.Run("send-tx -i ../jsons/checkIfWon.json -signer user2")
-	if !strings.Contains(out, `"Value": "1"`) {
-		t.Fatal("check If won failed")
+	if !strings.Contains(out, `"Value": "congrats, you won"`) {
+		t.Fatal("win was not recognized")
 	}
 
 	//the game should have ended, lets start a new one
@@ -148,50 +119,32 @@ func Test(t *testing.T) {
 
 	//user2 should play
 	out = gammaCli.Run("send-tx -i ../jsons/play-0.json -signer user2")
-	if !strings.Contains(out, `"ExecutionResult": "SUCCESS"`) {
+	if !strings.Contains(out, `"Value": "X--------"`) {
 		t.Fatal("user2 failed to play")
 	}
 
 	//user1 should be stopped from playing, the spot is taken
 	out = gammaCli.Run("send-tx -i ../jsons/play-1.json -signer user1")
-	if !strings.Contains(out, `"ExecutionResult": "SUCCESS"`) {
-		t.Fatal("user1 failed to play")
-	}
-
-	//check if the board was successfully updated
-	out = gammaCli.Run("read -i ../jsons/getBoard.json")
 	if !strings.Contains(out, `"Value": "XO-------"`) {
 		t.Fatal("updating board failed")
 	}
 
 	//user2 should play
 	out = gammaCli.Run("send-tx -i ../jsons/play-4.json -signer user2")
-	if !strings.Contains(out, `"ExecutionResult": "SUCCESS"`) {
-		t.Fatal("user2 failed to play")
+	if !strings.Contains(out, `"Value": "XO--X----"`) {
+		t.Fatal("updating board failed")
 	}
 
 	//user1 should be stopped from playing, the spot is taken
 	out = gammaCli.Run("send-tx -i ../jsons/play-7.json -signer user1")
-	if !strings.Contains(out, `"ExecutionResult": "SUCCESS"`) {
-		t.Fatal("user1 failed to play")
-	}
-
-	//check if the board was successfully updated
-	out = gammaCli.Run("read -i ../jsons/getBoard.json")
 	if !strings.Contains(out, `"Value": "XO--X--O-"`) {
 		t.Fatal("updating board failed")
 	}
 
 	//user2 should play
 	out = gammaCli.Run("send-tx -i ../jsons/play-8.json -signer user2")
-	if !strings.Contains(out, `"ExecutionResult": "SUCCESS"`) {
-		t.Fatal("user2 failed to play")
-	}
-
-	//check if game won
-	out = gammaCli.Run("send-tx -i ../jsons/checkIfWon.json -signer user2")
-	if !strings.Contains(out, `"Value": "1"`) {
-		t.Fatal("check If won failed")
+	if !strings.Contains(out, `"Value": "congrats, you won"`) {
+		t.Fatal("win was not recognized")
 	}
 
 	//the game should have ended, lets start a new one
@@ -209,50 +162,32 @@ func Test(t *testing.T) {
 
 	//user2 should play
 	out = gammaCli.Run("send-tx -i ../jsons/play-0.json -signer user2")
-	if !strings.Contains(out, `"ExecutionResult": "SUCCESS"`) {
-		t.Fatal("user2 failed to play")
+	if !strings.Contains(out, `"Value": "X--------"`) {
+		t.Fatal("updating board failed")
 	}
 
 	//user1 should be stopped from playing, the spot is taken
 	out = gammaCli.Run("send-tx -i ../jsons/play-5.json -signer user1")
-	if !strings.Contains(out, `"ExecutionResult": "SUCCESS"`) {
-		t.Fatal("user1 failed to play")
-	}
-
-	//check if the board was successfully updated
-	out = gammaCli.Run("read -i ../jsons/getBoard.json")
 	if !strings.Contains(out, `"Value": "X----O---"`) {
 		t.Fatal("updating board failed")
 	}
 
 	//user2 should play
 	out = gammaCli.Run("send-tx -i ../jsons/play-1.json -signer user2")
-	if !strings.Contains(out, `"ExecutionResult": "SUCCESS"`) {
-		t.Fatal("user2 failed to play")
+	if !strings.Contains(out, `"Value": "XX---O---"`) {
+		t.Fatal("updating board failed")
 	}
 
 	//user1 should be stopped from playing, the spot is taken
 	out = gammaCli.Run("send-tx -i ../jsons/play-7.json -signer user1")
-	if !strings.Contains(out, `"ExecutionResult": "SUCCESS"`) {
-		t.Fatal("user1 failed to play")
-	}
-
-	//check if the board was successfully updated
-	out = gammaCli.Run("read -i ../jsons/getBoard.json")
 	if !strings.Contains(out, `"Value": "XX---O-O-"`) {
 		t.Fatal("updating board failed")
 	}
 
 	//user2 should play
 	out = gammaCli.Run("send-tx -i ../jsons/play-2.json -signer user2")
-	if !strings.Contains(out, `"ExecutionResult": "SUCCESS"`) {
-		t.Fatal("user2 failed to play")
-	}
-
-	//check if game won
-	out = gammaCli.Run("send-tx -i ../jsons/checkIfWon.json -signer user2")
-	if !strings.Contains(out, `"Value": "1"`) {
-		t.Fatal("check If won failed")
+	if !strings.Contains(out, `"Value": "congrats, you won"`) {
+		t.Fatal("win was not recognized")
 	}
 
 }
