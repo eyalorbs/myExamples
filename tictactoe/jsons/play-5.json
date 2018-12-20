@@ -1,0 +1,11 @@
+{
+  "ContractName": "tictactoe",
+  "MethodName": "play",
+  "Arguments": [
+    {
+      "Type": "uint32",
+      "Value": "5"
+    }
+
+  ]
+}

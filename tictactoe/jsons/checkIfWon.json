@@ -1,0 +1,6 @@
+{
+  "ContractName": "tictactoe",
+  "MethodName": "checkIfWon",
+  "Arguments": [
+  ]
+}
