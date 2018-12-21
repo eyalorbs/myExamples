@@ -30,73 +30,83 @@ func main() {
 			text, _ := reader.ReadString('\n')
 			text = strings.TrimSuffix(text, "\n")
 			out = gammaCli.Run("send-tx -i tictactoe/jsons/startGame.json -signer user" + text)
-			fmt.Println(getValue(out))
+			printBoard(getValue(out))
 
 		case "play-0\n":
 			fmt.Println("which user are you?")
 			text, _ := reader.ReadString('\n')
+			text = strings.TrimSuffix(text, "\n")
 			out = gammaCli.Run("send-tx -i tictactoe/jsons/play-0.json -signer user" + text)
-			fmt.Println(getValue(out))
+			printBoard(getValue(out))
 
 		case "play-1\n":
 			fmt.Println("which user are you?")
 			text, _ := reader.ReadString('\n')
+			text = strings.TrimSuffix(text, "\n")
 			out = gammaCli.Run("send-tx -i tictactoe/jsons/play-1.json -signer user" + text)
-			fmt.Println(getValue(out))
-
+			printBoard(getValue(out))
 		case "play-2\n":
 			fmt.Println("which user are you?")
 			text, _ := reader.ReadString('\n')
+			text = strings.TrimSuffix(text, "\n")
 			out = gammaCli.Run("send-tx -i tictactoe/jsons/play-2.json -signer user" + text)
-			fmt.Println(getValue(out))
+			printBoard(getValue(out))
 
 		case "play-3\n":
 			fmt.Println("which user are you?")
 			text, _ := reader.ReadString('\n')
+			text = strings.TrimSuffix(text, "\n")
 			out = gammaCli.Run("send-tx -i tictactoe/jsons/play-3.json -signer user" + text)
-			fmt.Println(getValue(out))
+			printBoard(getValue(out))
 
 		case "play-4\n":
 			fmt.Println("which user are you?")
 			text, _ := reader.ReadString('\n')
+			text = strings.TrimSuffix(text, "\n")
 			out = gammaCli.Run("send-tx -i tictactoe/jsons/play-4.json -signer user" + text)
-			fmt.Println(getValue(out))
+			printBoard(getValue(out))
 
 		case "play-5\n":
 			fmt.Println("which user are you?")
 			text, _ := reader.ReadString('\n')
+			text = strings.TrimSuffix(text, "\n")
 			out = gammaCli.Run("send-tx -i tictactoe/jsons/play-5.json -signer user" + text)
-			fmt.Println(getValue(out))
+			printBoard(getValue(out))
 
 		case "play-6\n":
 			fmt.Println("which user are you?")
 			text, _ := reader.ReadString('\n')
+			text = strings.TrimSuffix(text, "\n")
 			out = gammaCli.Run("send-tx -i tictactoe/jsons/play-6.json -signer user" + text)
-			fmt.Println(getValue(out))
+			printBoard(getValue(out))
 
 		case "play-7\n":
 			fmt.Println("which user are you?")
 			text, _ := reader.ReadString('\n')
+			text = strings.TrimSuffix(text, "\n")
 			out = gammaCli.Run("send-tx -i tictactoe/jsons/play-7.json -signer user" + text)
-			fmt.Println(getValue(out))
+			printBoard(getValue(out))
 
 		case "play-8\n":
 			fmt.Println("which user are you?")
 			text, _ := reader.ReadString('\n')
+			text = strings.TrimSuffix(text, "\n")
 			out = gammaCli.Run("send-tx -i tictactoe/jsons/play-8.json -signer user" + text)
-			fmt.Println(getValue(out))
+			printBoard(getValue(out))
 
 		case "quitPool\n":
 			fmt.Println("which user are you?")
 			text, _ := reader.ReadString('\n')
+			text = strings.TrimSuffix(text, "\n")
 			out = gammaCli.Run("send-tx -i tictactoe/jsons/quitPool.json -signer user" + text)
-			fmt.Println(getValue(out))
+			printBoard(getValue(out))
 
 		case "finishGame\n":
 			fmt.Println("which user are you?")
 			text, _ := reader.ReadString('\n')
+			text = strings.TrimSuffix(text, "\n")
 			out = gammaCli.Run("send-tx -i tictactoe/jsons/finishGame.json -signer user" + text)
-			fmt.Println(getValue(out))
+			printBoard(getValue(out))
 		default:
 			fmt.Println("invalid input")
 		}
@@ -129,4 +139,14 @@ func getValue(out string) (value string) {
 		return ""
 	}
 	return resp.OutputArguments[0].Value
+}
+
+func printBoard(rawBoard string) {
+	if len(rawBoard) != 9 {
+		fmt.Println(rawBoard)
+	} else {
+		fmt.Println(rawBoard[:3])
+		fmt.Println(rawBoard[3:6])
+		fmt.Println(rawBoard[6:9])
+	}
 }

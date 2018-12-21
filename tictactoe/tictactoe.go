@@ -132,7 +132,7 @@ func (games *Games) play(box uint32) {
 
 	//if the player isn't registered for the game, don't let him play
 	if !(bytes.Equal(signerAddress, game.PlayerX) || bytes.Equal(signerAddress, game.PlayerO)) {
-		panic("you are not registered as a player in this game")
+		panic("you are not registered in any game game")
 	}
 	//make sure every player play's on his turn
 	if game.PlayerXTurn {
@@ -189,7 +189,7 @@ func getBoard() (board string) {
 
 	//if the player isn't registered for the game don't let him play
 	if !(bytes.Equal(game.PlayerX, signerAddress) || bytes.Equal(game.PlayerO, signerAddress)) {
-		panic("you are not registered for this game")
+		panic("you are not registered in any game")
 	}
 	//return the board
 	return string(game.Board)
