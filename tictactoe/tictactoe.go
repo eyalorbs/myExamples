@@ -43,7 +43,6 @@ func startGame() (feedback string) {
 	//get the games from the state
 	var games Games
 	byteGames := state.ReadBytesByKey("games")
-	//update the games
 	err := games.UnmarshalJSON(byteGames)
 	if err != nil {
 		panic(err)
