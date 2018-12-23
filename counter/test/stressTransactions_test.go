@@ -10,7 +10,7 @@ func TestStressTX(t *testing.T) {
 	gammaCli := gamma.Cli().Start()
 	defer gammaCli.Stop()
 
-	for i := 0; i < 5000; i++ {
+	for i := 0; i < 1500; i++ {
 		message := "send-tx -env testnet42 -i ../jsons/add-10.json"
 		//add to the count and check
 		out := gammaCli.Run(message)
