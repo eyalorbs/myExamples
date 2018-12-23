@@ -1,0 +1,14 @@
+{
+  "ContractName": "battleship",
+  "MethodName": "guess",
+  "Arguments": [
+    {
+      "Type": "uint32",
+      "Value": "4"
+    },
+    {
+      "Type": "uint32",
+      "Value": "5"
+    }
+  ]
+}
