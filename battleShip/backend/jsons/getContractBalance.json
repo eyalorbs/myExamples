@@ -1,0 +1,6 @@
+{
+  "ContractName": "battleship",
+  "MethodName": "getContractBalance",
+  "Arguments": [
+  ]
+}
