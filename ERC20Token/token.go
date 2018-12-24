@@ -94,7 +94,6 @@ func transferFrom(from, to []byte, tokens uint64) {
 	s = append(s, from...)
 	s = append(s, address.GetCallerAddress()...)
 	key := s
-	//key := []byte {235, 5, 158, 87, 198, 78, 119, 79, 175, 230, 78, 143, 74, 68, 126, 244, 233, 92, 46, 254, 111, 221, 182, 216, 242, 248, 103, 4, 254, 37, 220, 243, 98, 172, 119, 107, 219, 23, 231, 26}
 
 	//update token owner account
 	state.WriteUint64ByAddress(from, Sub(state.ReadUint64ByAddress(from), tokens))
