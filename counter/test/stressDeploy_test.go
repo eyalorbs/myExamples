@@ -11,8 +11,8 @@ func TestDeploy(t *testing.T) {
 	gammaCli := gamma.Cli().Start()
 	defer gammaCli.Stop()
 
-	for i := 117; i <= 5000; i++ {
-		message := "deploy -env testnet42 -name MyCounter" + strconv.Itoa(i) + " -code ../counter.go"
+	for i := 1; i <= 11; i++ {
+		message := "deploy ../counter.go -env testnet42 -name MyCounter" + strconv.Itoa(i)
 		out := gammaCli.Run(message)
 		if !strings.Contains(out, `"ExecutionResult": "SUCCESS"`) {
 			t.Fatal("deploy failed")

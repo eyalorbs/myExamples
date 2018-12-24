@@ -13,32 +13,32 @@ func Test_testNet(t *testing.T) {
 	//no need to deploy contract, it's already deployed
 
 	//check output
-	out := gammaCli.Run("read -env testnet42 -i ../jsons/get.json")
-	if !strings.Contains(out, `"Value": "0"`) {
+	out := gammaCli.Run("run-query ../jsons/get.json -env testnet42")
+	if !strings.Contains(out, `"Value": "135"`) {
 		t.Fatal("initial count failed")
 	}
 
 	//add to the count and check
-	out = gammaCli.Run("send-tx -env testnet42 -i ../jsons/add-10.json")
+	out = gammaCli.Run("send-tx ../jsons/add-10.json -env testnet42")
 	if !strings.Contains(out, `"ExecutionResult": "SUCCESS"`) {
 		t.Fatal(`"ExecutionResult": "SUCCESS"`)
 	}
 
 	//check output
-	out = gammaCli.Run("read -env testnet42 -i ../jsons/get.json")
-	if !strings.Contains(out, `"Value": "10"`) {
+	out = gammaCli.Run("run-query ../jsons/get.json -env testnet42")
+	if !strings.Contains(out, `"Value": "145"`) {
 		t.Fatal("initial count failed")
 	}
 
 	//add to the count and check
-	out = gammaCli.Run("send-tx -env testnet42 -i ../jsons/add-25.json")
+	out = gammaCli.Run("send-tx ../jsons/add-25.json -env testnet42")
 	if !strings.Contains(out, `"ExecutionResult": "SUCCESS"`) {
 		t.Fatal(`"ExecutionResult": "SUCCESS"`)
 	}
 
 	//check output
-	out = gammaCli.Run("read -env testnet42 -i ../jsons/get.json")
-	if !strings.Contains(out, `"Value": "35"`) {
+	out = gammaCli.Run("run-query ../jsons/get.json -env testnet42")
+	if !strings.Contains(out, `"Value": "170"`) {
 		t.Fatal("initial count failed")
 	}
 }

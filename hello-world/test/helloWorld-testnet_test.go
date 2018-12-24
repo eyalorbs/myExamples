@@ -10,8 +10,13 @@ func Test_testNet(t *testing.T) {
 	gammaCli := gamma.Cli().Start()
 	defer gammaCli.Stop()
 	//no need to deploy contract, it's already deployed
+	out := gammaCli.Run("deploy ../helloWorld.go -env testnet42 -signer user1 -name helloWorld12")
+	if !strings.Contains(out, `"ExecutionResult": "SUCCESS"`) {
+		t.Fatal("deploy failed")
+	}
+
 	//check output
-	out := gammaCli.Run("read -env testnet42 -i ../jsons/greet.json")
+	out = gammaCli.Run("run-query ../jsons/greet.json -env testnet42")
 	if !strings.Contains(out, `"Value": "hello world!"`) {
 		t.Fatal("greeting failed")
 	}
