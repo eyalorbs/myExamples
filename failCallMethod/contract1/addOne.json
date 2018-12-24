@@ -1,0 +1,10 @@
+{
+  "ContractName": "contract1",
+  "MethodName": "addOne",
+  "Arguments": [
+    {
+    "Type": "uint32",
+      "Value": "5"
+    }
+  ]
+}
