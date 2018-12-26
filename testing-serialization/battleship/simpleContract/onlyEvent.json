@@ -1,0 +1,6 @@
+{
+  "ContractName": "simpleContract",
+  "MethodName": "onlyEvent",
+  "Arguments": [
+  ]
+}

@@ -1,29 +1,36 @@
 package main
 
 import (
-	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
-	"time"
 )
 
 func main() {
-	coo1 := coordinate{3, 5}
-	coo2 := coordinate{5, 2}
-	box1 := box{coo1, true}
-	box2 := box{coo2, false}
-	box3 := box{coo1, false}
-	box4 := box{coo2, true}
-	boxes := secretBoard{box1, box2, box3, box4}
-	fmt.Println("before being shuffled", boxes)
-	boxes.Shuffle()
-	fmt.Println("after being shuffled", boxes)
-	b := boxes.sha256("password")
-	fmt.Println(b)
+	var carrier ship
+	var battleship ship
+	var cruiser ship
+	var submarine ship
+	var destroyer ship
+	carrier.new("carrier", 0, 0, 0, 4)
+	battleship.new("battleship", 9, 9, 6, 9)
+	cruiser.new("cruiser", 8, 8, 5, 8)
+	submarine.new("submarine", 7, 7, 5, 7)
+	destroyer.new("destroyer", 6, 6, 5, 6)
+	boats := ships{carrier, battleship, cruiser, submarine, destroyer}
+	fmt.Println(boats)
+	b, err := boats.MarshalJSON()
+	if err != nil {
+		log.Fatal(err)
+	}
+	var dec ships
+	err = dec.UnmarshalJSON(b)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(dec)
 
 }
 
@@ -243,90 +250,86 @@ func (games *games) UnmarshalJSON(b []byte) (err error) {
 	return nil
 }
 
-type box struct {
-	coo  coordinate
-	ship bool
+type ship struct {
+	name            string
+	headCoordinates coordinate
+	tailCoordinates coordinate
 }
 
-func (box *box) new(coo coordinate, ship bool) {
-	box.coo = coo
-	box.ship = ship
+func (boat *ship) new(name string, headX, headY, tailX, tailY uint8) {
+	boat.name = name
+	boat.headCoordinates = coordinate{headX, tailX}
+	boat.tailCoordinates = coordinate{tailX, tailY}
 }
-func (box *box) MarshalJSON() (b []byte, err error) {
-	boxMap := make(map[uint8][]byte)
-	b, err = box.coo.MarshalJSON()
+func (boat *ship) MarshalJSON() (b []byte, err error) {
+	boatMap := make(map[uint8][]byte)
+	boatMap[0] = []byte(boat.name)
+	b, err = boat.headCoordinates.MarshalJSON()
 	if err != nil {
 		return []byte{}, err
 	}
-	boxMap[0] = b
-	if box.ship {
-		boxMap[1] = []byte{1}
-	} else {
-		boxMap[1] = []byte{0}
+	boatMap[1] = b
+
+	b, err = boat.tailCoordinates.MarshalJSON()
+	if err != nil {
+		return []byte{}, err
 	}
-	return json.Marshal(boxMap)
+	boatMap[2] = b
+	return json.Marshal(boatMap)
 }
-func (box *box) UnmarshalJSON(b []byte) (err error) {
-	boxMap := make(map[uint8][]byte)
-	err = json.Unmarshal(b, &boxMap)
+func (boat *ship) UnmarshalJSON(b []byte) (err error) {
+	boatMap := make(map[uint8][]byte)
+	err = json.Unmarshal(b, &boatMap)
 	if err != nil {
 		return err
 	}
-	coo := coordinate{}
-	err = coo.UnmarshalJSON(boxMap[0])
+	boat.name = string(boatMap[0])
+	err = boat.headCoordinates.UnmarshalJSON(boatMap[1])
 	if err != nil {
 		return err
 	}
-	box.coo = coo
-	box.ship = bytes.Equal(boxMap[1], []byte{1})
+	err = boat.tailCoordinates.UnmarshalJSON(boatMap[2])
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
-type secretBoard []box
+type ships []ship
 
-func (boxes *secretBoard) MarshalJSON() (b []byte, err error) {
-	secretBoardMap := make(map[uint8][]byte)
-	for i, val := range *boxes {
-		b, err = val.MarshalJSON()
+func (boats *ships) MarshalJSON() (b []byte, err error) {
+	boatsMap := make(map[uint8][]byte)
+	for i, val := range *boats {
+		boatsMap[uint8(i)], err = val.MarshalJSON()
 		if err != nil {
 			return []byte{}, err
 		}
-		secretBoardMap[uint8(i)] = b
 	}
-	return json.Marshal(secretBoardMap)
+	return json.Marshal(boatsMap)
 }
-func (boxes *secretBoard) UnmarshalJSON(b []byte) (err error) {
-	secretBoardMap := make(map[uint8][]byte)
-	err = json.Unmarshal(b, &secretBoardMap)
+func (boats *ships) UnmarshalJSON(b []byte) (err error) {
+	boatsMap := make(map[uint8][]byte)
+	err = json.Unmarshal(b, &boatsMap)
 	if err != nil {
 		return err
 	}
-	var box box
-	for i := 0; i < len(secretBoardMap); i++ {
-		err = box.UnmarshalJSON(secretBoardMap[uint8(i)])
+	var temp ship
+	for i := 0; i < len(boatsMap); i++ {
+		err = temp.UnmarshalJSON(boatsMap[uint8(i)])
 		if err != nil {
 			return err
 		}
-		*boxes = append(*boxes, box)
+		*boats = append(*boats, temp)
 	}
 	return nil
 }
-func (boxes *secretBoard) sha256(sk string) (sha []byte) {
+func (boats *ships) sha256(sk string) (sha []byte, err error) {
 	h := hmac.New(sha256.New, []byte(sk))
-	b, err := boxes.MarshalJSON()
+	b, err := boats.MarshalJSON()
 	if err != nil {
-		log.Fatal(err)
+		return []byte{}, err
 	}
 	h.Write(b)
-	return h.Sum(nil)
+	return h.Sum(nil), nil
 
-}
-func (boxes *secretBoard) Shuffle() {
-	r := rand.New(rand.NewSource(time.Now().Unix()))
-	ret := make(secretBoard, len(*boxes))
-	perm := r.Perm(len(*boxes))
-	for i, randIndex := range perm {
-		ret[i] = (*boxes)[randIndex]
-	}
-	*boxes = ret
 }
