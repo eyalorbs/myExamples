@@ -1,0 +1,11 @@
+{
+  "ContractName": "battleship",
+  "MethodName": "updateHit",
+  "Arguments": [
+    {
+      "Type": "uint32",
+      "Value": "0"
+    }
+
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "ContractName": "battleship",
+  "MethodName": "startGame",
+  "Arguments": [
+    {
+      "Type": "bytes",
+      "Value": "232994d1e26d9a5e425be021b53dc81520ed820410236c04446a33d40685eb42"
+    }
+  ]
+}

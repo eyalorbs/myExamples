@@ -1,0 +1,14 @@
+{
+  "ContractName": "battleship",
+  "MethodName": "approveBoard",
+  "Arguments": [
+    {
+      "Type": "string",
+      "Value": ""
+    },
+    {
+      "Type": "bytes",
+      "Value": ""
+    }
+  ]
+}

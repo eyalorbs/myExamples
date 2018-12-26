@@ -1,7 +1,6 @@
 package main
 
 //todo: find a way to add money
-//todo find a way to validate the ships on a board
 //todo develop the user interface
 
 import (
@@ -11,14 +10,14 @@ import (
 	"encoding/json"
 	"github.com/orbs-network/orbs-contract-sdk/go/sdk"
 	"github.com/orbs-network/orbs-contract-sdk/go/sdk/address"
+	"github.com/orbs-network/orbs-contract-sdk/go/sdk/events"
 	"github.com/orbs-network/orbs-contract-sdk/go/sdk/service"
 	"github.com/orbs-network/orbs-contract-sdk/go/sdk/state"
-	"log"
 	"math"
 )
 
-var PUBLIC = sdk.Export(startGame, getContractBalance, getUserBalance, getOpponentStatus, guess, updateHit, quitGame, getMyHits, approveBoard, checkIfWon)
-var SYSTEM = sdk.Export(_init, PanicIfSignerPlaying, PanicIfSignerNotPlaying, HandleMoney, ApproveShipsOnBoard)
+var PUBLIC = sdk.Export(startGame, getContractBalance, getUserBalance, getOpponentStatus, guess, updateHit, quitGame, getMyHits, approveBoard, checkIfWon, checkIfInGame)
+var SYSTEM = sdk.Export(_init, PanicIfSignerPlaying, PanicIfSignerNotPlaying, HandleMoney, shipsOk, didLie, startGameEvent, InGame, PanicIfOneOfPlayersApprovedBoard)
 
 //helper coin contract name: ERCBattleship
 
@@ -30,6 +29,14 @@ func _init() {
 	}
 	state.WriteBytesByKey("games", b)
 	state.WriteBytesByKey("waitingPool", []byte{})
+}
+
+func PanicIfOneOfPlayersApprovedBoard() {
+	games := make(games)
+	relevantGame := games[state.ReadUint64ByAddress(address.GetSignerAddress())]
+	if relevantGame.board1Approved != 3 || relevantGame.board2Approved != 3 {
+		panic("both players need to approve their board")
+	}
 }
 
 func PanicIfSignerPlaying() {
@@ -58,7 +65,7 @@ func PanicIfSignerNotPlaying() {
 	//if the index isn't 0, the player is playing
 	index := state.ReadUint64ByAddress(signerAddress)
 	if index == 0 {
-		panic("player is not playing already playing")
+		panic("player is not playing a game")
 	}
 }
 
@@ -68,9 +75,15 @@ func HandleMoney() {
 }
 
 //public functions
+func startGameEvent(event string) {
+
+}
 
 //the user needs to manually approve the function 10 tokens
 func startGame(hashedBoard []byte) {
+	if len(hashedBoard) != 32 {
+		panic("hashed board must be 256 bits")
+	}
 	//get the games from the state
 	games := make(games)
 	games.getGamesFromState()
@@ -81,7 +94,8 @@ func startGame(hashedBoard []byte) {
 	if bytes.Equal(state.ReadBytesByKey("waitingPool"), []byte{}) {
 		state.WriteBytesByKey("waitingPool", address.GetSignerAddress())
 		state.WriteBytesByAddress(address.GetSignerAddress(), hashedBoard)
-		service.CallMethod("ERCBattleship", "transfer", 10)
+		//service.CallMethod("ERCBattleship", "transfer", 10)
+		events.EmitEvent(startGameEvent, "added to pool")
 		return
 	}
 	//player1 is the caller address
@@ -117,14 +131,38 @@ func startGame(hashedBoard []byte) {
 			state.ClearByAddress(player2)
 			state.WriteUint64ByAddress(player2, i)
 			HandleMoney() //DON'T FORGET TO REPLACE THIS BY A REAL FUNCTION
+			events.EmitEvent(startGameEvent, "started new game")
 			return
 		}
 	}
 	panic("no more room for more games, this game is very very very successful")
 }
+func InGame(inGame string) {
+
+}
+func checkIfInGame() {
+	signerAddress := address.GetSignerAddress()
+
+	//if there are 256 bits(a hashedBoard) than the player is playing
+	if len(state.ReadBytesByAddress(signerAddress)) == 32 {
+		events.EmitEvent(InGame, "player still in pool")
+		return
+	}
+
+	//if the index isn't 0, the player is playing
+	index := state.ReadUint64ByAddress(signerAddress)
+	if index != 0 {
+		events.EmitEvent(InGame, "player is in a game")
+		return
+	}
+
+	events.EmitEvent(InGame, "player is neither in pool nor in a game")
+
+}
 
 func guess(x, y uint32) {
 	PanicIfSignerNotPlaying()
+	PanicIfOneOfPlayersApprovedBoard()
 	//create a coordinate
 	coo := coordinate{uint8(x), uint8(y)}
 	//make sure the coordinate is valid
@@ -147,8 +185,8 @@ func guess(x, y uint32) {
 }
 func (coo *coordinate) validateGuessCoordinates() {
 	//make sure user is playing
-	PanicIfSignerPlaying()
-	if 9 < coo.X || 9 < coo.Y {
+	PanicIfSignerNotPlaying()
+	if 10 < coo.X || 10 < coo.Y {
 		panic("guess out of range")
 	}
 	//get the relevant game
@@ -177,10 +215,22 @@ func getOpponentStatus() (x, y uint32) {
 	index := state.ReadUint64ByAddress(signerAddress)
 	games := make(games)
 	games.getGamesFromState()
+	relevantGame := games[index]
+	//panic if it is the player's turn
+	if bytes.Equal(relevantGame.Player1, signerAddress) {
+		if relevantGame.Player1Turn {
+			panic("it is your turn, you are not the one who is supposed to validate it")
+		}
+	} else if bytes.Equal(relevantGame.Player2, signerAddress) {
+		if !relevantGame.Player1Turn {
+			panic("it is your turn, you are not the one who is supposed to validate it")
+		}
+	}
+
 	//if the opponent hasn't played yed, panic. otherwise return the opponent guess
-	opponentGuess := games[index].OpponentLastGuess
-	EmptyGuess := coordinate{}
-	if opponentGuess != EmptyGuess {
+	opponentGuess := relevantGame.OpponentLastGuess
+	EmptyGuess := coordinate{0, 0}
+	if opponentGuess == EmptyGuess {
 		panic("opponent didn't play yet")
 	}
 	return uint32(opponentGuess.X), uint32(opponentGuess.Y)
@@ -188,25 +238,41 @@ func getOpponentStatus() (x, y uint32) {
 
 func updateHit(hit uint32) {
 	PanicIfSignerNotPlaying()
+	//get the relevant game
 	signerAddress := address.GetSignerAddress()
 	games := make(games)
 	games.getGamesFromState()
 	relevantGame := games[state.ReadUint64ByAddress(signerAddress)]
+
 	relevantGame.panicIfTurn()
+	//only let player update if he needs to
+
 	if hit == 0 {
 		if relevantGame.Player1Turn {
+			if len(relevantGame.Player1Guesses.opponentResponses) == len(relevantGame.Player1Guesses.playerGuesses) {
+				panic("there is no need to update")
+			}
 			relevantGame.Player1Guesses.opponentResponses = append(relevantGame.Player1Guesses.opponentResponses, false)
 			relevantGame.Player1Turn = !relevantGame.Player1Turn
-		} else if !relevantGame.Player1Turn {
+		} else {
+			if len(relevantGame.Player2Guesses.opponentResponses) == len(relevantGame.Player2Guesses.playerGuesses) {
+				panic("there is no need to update")
+			}
 			relevantGame.Player2Guesses.opponentResponses = append(relevantGame.Player2Guesses.opponentResponses, false)
 			relevantGame.Player1Turn = !relevantGame.Player1Turn
 		}
 	} else {
 		if relevantGame.Player1Turn {
+			if len(relevantGame.Player1Guesses.opponentResponses) == len(relevantGame.Player1Guesses.playerGuesses) {
+				panic("there is no need to update")
+			}
 			relevantGame.Player1Guesses.opponentResponses = append(relevantGame.Player1Guesses.opponentResponses, true)
 			relevantGame.Player1Turn = !relevantGame.Player1Turn
 			relevantGame.Player1Hits += 1
-		} else if !relevantGame.Player1Turn {
+		} else {
+			if len(relevantGame.Player2Guesses.opponentResponses) == len(relevantGame.Player2Guesses.playerGuesses) {
+				panic("there is no need to update")
+			}
 			relevantGame.Player2Guesses.opponentResponses = append(relevantGame.Player2Guesses.opponentResponses, true)
 			relevantGame.Player1Turn = !relevantGame.Player1Turn
 			relevantGame.Player2Hits += 1
@@ -255,14 +321,112 @@ func quitGame() {
 	games.getGamesFromState()
 	game := games[state.ReadUint64ByAddress(signerAddress)]
 
+	delete(games, state.ReadUint64ByAddress(signerAddress))
 	state.ClearByAddress(game.Player1)
 	state.ClearByAddress(game.Player2)
-	delete(games, state.ReadUint64ByAddress(signerAddress))
 	games.updateState()
 
 }
+func shipsOk(boats ships) (ok bool, shipCoordinates []coordinate) {
+	if len(boats) != 5 {
+		return false, nil
+	}
+	for _, val := range boats {
+		//check if boat is diagonal
+		if val.headCoordinates.X != val.tailCoordinates.X && val.headCoordinates.Y != val.tailCoordinates.Y {
+			return false, nil
+		}
+		//check if coordinates are in range
+		if 10 < val.headCoordinates.X || 10 < val.headCoordinates.Y || 10 < val.tailCoordinates.X || 10 < val.tailCoordinates.Y {
+			return false, nil
+		}
 
-func approveBoard(secretKey string, shaBoard []byte, board []byte) {
+		//check if length is ok
+		var length uint8
+		switch val.name {
+		case "Carrier":
+			length = 5
+
+		case "Battleship":
+			length = 4
+
+		case "Cruiser":
+			length = 3
+
+		case "Submarine":
+			length = 3
+
+		case "Destroyer":
+			length = 2
+
+		default:
+			return false, nil
+		}
+		if uint8(math.Abs(float64(val.headCoordinates.X)-float64(val.tailCoordinates.X))) != length && uint8(math.Abs(float64(val.headCoordinates.Y)-float64(val.tailCoordinates.Y))) != length {
+			return false, nil
+		}
+
+		//add all of the coordinates to a slice and return it, if there is overlap return false
+		for i := uint8(math.Min(float64(val.headCoordinates.X), float64(val.tailCoordinates.X))); i <= uint8(math.Max(float64(val.headCoordinates.X), float64(val.tailCoordinates.X))); i++ {
+			for j := uint8(math.Min(float64(val.headCoordinates.Y), float64(val.tailCoordinates.Y))); j <= uint8(math.Max(float64(val.headCoordinates.Y), float64(val.tailCoordinates.Y))); j++ {
+				for _, coor := range shipCoordinates {
+					currentCoo := coordinate{i, j}
+					if currentCoo == coor {
+
+						return false, nil
+					}
+					shipCoordinates = append(shipCoordinates, currentCoo)
+				}
+			}
+		}
+	}
+	return true, shipCoordinates
+}
+func didLie(shipCoordinates []coordinate, relevantGame game) (lied bool) {
+	signerAddress := address.GetSignerAddress()
+
+	if bytes.Equal(signerAddress, relevantGame.Player1) {
+		for i, val := range relevantGame.Player1Guesses.playerGuesses {
+			found := false
+			if relevantGame.Player1Guesses.opponentResponses[i] {
+				for _, coo := range shipCoordinates {
+					if val == coo {
+						found = true
+						break
+					}
+				}
+				if !found {
+					return false
+				}
+
+			}
+		}
+
+	} else if bytes.Equal(signerAddress, relevantGame.Player2) {
+		for i, val := range relevantGame.Player2Guesses.playerGuesses {
+			found := false
+			if relevantGame.Player2Guesses.opponentResponses[i] {
+				for _, coo := range shipCoordinates {
+					if val == coo {
+						found = true
+						break
+					}
+				}
+				if !found {
+					return false
+				}
+
+			}
+		}
+
+	} else {
+		panic("you are not registered for this game")
+	}
+
+	return true
+
+}
+func approveBoard(secretKey string, Marshaledships []byte) {
 	PanicIfSignerNotPlaying()
 
 	//get the relevant game
@@ -272,100 +436,59 @@ func approveBoard(secretKey string, shaBoard []byte, board []byte) {
 	game := games[state.ReadUint64ByAddress(signerAddress)]
 
 	//get the board the player claims to have
-	secretBoard := secretBoard{}
-	err := secretBoard.UnmarshalJSON(board)
+	boats := ships{}
+	err := boats.UnmarshalJSON(Marshaledships)
 	if err != nil {
 		panic(err)
 	}
 	//calculate the sha with the secret key
-	realSha := secretBoard.sha256(secretKey)
+	realSha, err := boats.sha256(secretKey)
+	if err != nil {
+		panic(err)
+	}
 
-	//if the player's sha and the calculated sha are different, do not approve board
-	if !bytes.Equal(realSha, shaBoard) {
-		if bytes.Equal(game.Player1, signerAddress) {
+	if bytes.Equal(game.Player1, signerAddress) {
+		shaShips := game.Board1Hashed
+		if !bytes.Equal(realSha, shaShips) {
 			game.board1Approved = 2
-			games[state.ReadUint64ByAddress(signerAddress)] = game
-			games.updateState()
-		} else if bytes.Equal(game.Player2, signerAddress) {
+			return
+		}
+		ok, coo := shipsOk(boats)
+		if !ok {
+			game.board1Approved = 2
+			return
+		}
+		if didLie(coo, game) {
+			game.board1Approved = 2
+			return
+		}
+		game.board1Approved = 1
+		games[state.ReadUint64ByAddress(signerAddress)] = game
+		games.updateState()
+	} else if bytes.Equal(game.Player2, signerAddress) {
+		shaShips := game.Board2Hashed
+		if !bytes.Equal(realSha, shaShips) {
 			game.board2Approved = 2
-			games[state.ReadUint64ByAddress(signerAddress)] = game
-			games.updateState()
-		} else {
-			panic("you are not registered for this game")
 		}
-	}
-
-	if bytes.Equal(game.Player1, signerAddress) {
-		//if there ins't the same amount of guesses as responses the game cannot be over
-		if len(game.Player2Guesses.opponentResponses) != len(game.Player2Guesses.playerGuesses) {
-			panic("the game cannot be over, there isn't the same amount of guesses as responses")
+		ok, coo := shipsOk(boats)
+		if !ok {
+			game.board2Approved = 2
+			return
 		}
-		//compare between the gusses and answer
-		for i := 0; i < len(game.Player2Guesses.playerGuesses); i++ {
-			for j := 0; j < len(secretBoard); j++ {
-				if secretBoard[j].coo == game.Player2Guesses.playerGuesses[i] {
-					if secretBoard[j].ship != game.Player2Guesses.opponentResponses[i] {
-						game.board1Approved = 2
-						games[state.ReadUint64ByAddress(signerAddress)] = game
-						games.updateState()
-					}
-				}
-			}
+		if didLie(coo, game) {
+			game.board2Approved = 2
+			return
 		}
-	} else if bytes.Equal(game.Player2, signerAddress) {
-		if len(game.Player1Guesses.opponentResponses) != len(game.Player1Guesses.playerGuesses) {
-			panic("the game cannot be over, there isn't the same amount of guesses as responses")
-		}
-		//compare between the gusses and answer
-		for i := 0; i < len(game.Player1Guesses.playerGuesses); i++ {
-			for j := 0; j < len(secretBoard); j++ {
-				if secretBoard[j].coo == game.Player1Guesses.playerGuesses[i] {
-					if secretBoard[j].ship != game.Player1Guesses.opponentResponses[i] {
-						game.board2Approved = 2
-						games[state.ReadUint64ByAddress(signerAddress)] = game
-						games.updateState()
-					}
-				}
-			}
-		}
-	} else {
-		panic("you are not registered for this game")
-	}
-
-	if bytes.Equal(game.Player1, signerAddress) {
-		game.board1Approved = ApproveShipsOnBoard(secretBoard)
+		game.board2Approved = 1
 		games[state.ReadUint64ByAddress(signerAddress)] = game
 		games.updateState()
-	} else if bytes.Equal(game.Player2, signerAddress) {
-		game.board2Approved = ApproveShipsOnBoard(secretBoard)
-		games[state.ReadUint64ByAddress(signerAddress)] = game
-		games.updateState()
+
 	} else {
 		panic("you are not registered for this game")
 	}
 
 }
-func ApproveShipsOnBoard(secretBoard secretBoard) (approved uint8) {
-	var board [10][10]bool
-	shipCoordinates := []coordinate{}
-	for i := 0; i < len(secretBoard); i++ {
-		board[i/10][i%10] = secretBoard[i].ship
-		if secretBoard[i].ship {
-			shipCoordinates = append(shipCoordinates, coordinate{uint8(i / 10), uint8(i % 10)})
-		}
-	}
-	if len(shipCoordinates) != 17 {
-		return 2
-	}
-	////////////////////////////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////////////////////////////////find out how to prove that a board is ok
-	////////////////////////////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////////////////////////////////
-	return 1
-}
+
 func checkIfWon() (player1, player2 bool) {
 	PanicIfSignerNotPlaying()
 	//get games and relevant game
@@ -381,9 +504,17 @@ func checkIfWon() (player1, player2 bool) {
 	if relevantGame.board1Approved == 3 || relevantGame.board2Approved == 3 {
 		panic("both players need to prove their board is ok")
 	}
+	board1Approved := relevantGame.board1Approved
+	board2Approved := relevantGame.board2Approved
+	player1Hits := relevantGame.Player1Hits
 
-	if relevantGame.board1Approved == 2 {
-		if relevantGame.board2Approved == 2 {
+	delete(games, state.ReadUint64ByAddress(signerAddress))
+	state.ClearByAddress(relevantGame.Player1)
+	state.ClearByAddress(relevantGame.Player2)
+	games.updateState()
+
+	if board1Approved == 2 {
+		if board2Approved == 2 {
 			//if both player's cheated, none of them get their money
 			return false, false
 		} else {
@@ -392,13 +523,13 @@ func checkIfWon() (player1, player2 bool) {
 		}
 	} else {
 		//if only player2 cheated, player1 wins
-		if relevantGame.board2Approved == 2 {
+		if board2Approved == 2 {
 			return true, false
 		}
 	}
 
 	//if neither player's cheated, whoever has 17 hits wins
-	if relevantGame.Player1Hits == 17 {
+	if player1Hits == 17 {
 		return true, false
 	} else {
 		return false, true
@@ -677,81 +808,86 @@ func (games *games) updateState() {
 	state.WriteBytesByKey("games", b)
 }
 
-type box struct {
-	coo  coordinate
-	ship bool
+type ship struct {
+	name            string
+	headCoordinates coordinate
+	tailCoordinates coordinate
 }
 
-func (box *box) new(coo coordinate, ship bool) {
-	box.coo = coo
-	box.ship = ship
+func (boat *ship) new(name string, headX, headY, tailX, tailY uint8) {
+	boat.name = name
+	boat.headCoordinates = coordinate{headX, headY}
+	boat.tailCoordinates = coordinate{tailX, tailY}
 }
-func (box *box) MarshalJSON() (b []byte, err error) {
-	boxMap := make(map[uint8][]byte)
-	b, err = box.coo.MarshalJSON()
+func (boat *ship) MarshalJSON() (b []byte, err error) {
+	boatMap := make(map[uint8][]byte)
+	boatMap[0] = []byte(boat.name)
+	b, err = boat.headCoordinates.MarshalJSON()
 	if err != nil {
 		return []byte{}, err
 	}
-	boxMap[0] = b
-	if box.ship {
-		boxMap[1] = []byte{1}
-	} else {
-		boxMap[1] = []byte{0}
+	boatMap[1] = b
+
+	b, err = boat.tailCoordinates.MarshalJSON()
+	if err != nil {
+		return []byte{}, err
 	}
-	return json.Marshal(boxMap)
+	boatMap[2] = b
+	return json.Marshal(boatMap)
 }
-func (box *box) UnmarshalJSON(b []byte) (err error) {
-	boxMap := make(map[uint8][]byte)
-	err = json.Unmarshal(b, &boxMap)
+func (boat *ship) UnmarshalJSON(b []byte) (err error) {
+	boatMap := make(map[uint8][]byte)
+	err = json.Unmarshal(b, &boatMap)
 	if err != nil {
 		return err
 	}
-	coo := coordinate{}
-	err = coo.UnmarshalJSON(boxMap[0])
+	boat.name = string(boatMap[0])
+	err = boat.headCoordinates.UnmarshalJSON(boatMap[1])
 	if err != nil {
 		return err
 	}
-	box.coo = coo
-	box.ship = bytes.Equal(boxMap[1], []byte{1})
+	err = boat.tailCoordinates.UnmarshalJSON(boatMap[2])
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
-type secretBoard []box
+type ships []ship
 
-func (boxes *secretBoard) MarshalJSON() (b []byte, err error) {
-	secretBoardMap := make(map[uint8][]byte)
-	for i, val := range *boxes {
-		b, err = val.MarshalJSON()
+func (boats *ships) MarshalJSON() (b []byte, err error) {
+	boatsMap := make(map[uint8][]byte)
+	for i, val := range *boats {
+		boatsMap[uint8(i)], err = val.MarshalJSON()
 		if err != nil {
 			return []byte{}, err
 		}
-		secretBoardMap[uint8(i)] = b
 	}
-	return json.Marshal(secretBoardMap)
+	return json.Marshal(boatsMap)
 }
-func (boxes *secretBoard) UnmarshalJSON(b []byte) (err error) {
-	secretBoardMap := make(map[uint8][]byte)
-	err = json.Unmarshal(b, &secretBoardMap)
+func (boats *ships) UnmarshalJSON(b []byte) (err error) {
+	boatsMap := make(map[uint8][]byte)
+	err = json.Unmarshal(b, &boatsMap)
 	if err != nil {
 		return err
 	}
-	var box box
-	for i := 0; i < len(secretBoardMap); i++ {
-		err = box.UnmarshalJSON(secretBoardMap[uint8(i)])
+	var temp ship
+	for i := 0; i < len(boatsMap); i++ {
+		err = temp.UnmarshalJSON(boatsMap[uint8(i)])
 		if err != nil {
 			return err
 		}
-		*boxes = append(*boxes, box)
+		*boats = append(*boats, temp)
 	}
 	return nil
 }
-func (boxes *secretBoard) sha256(sk string) (sha []byte) {
+func (boats *ships) sha256(sk string) (sha []byte, err error) {
 	h := hmac.New(sha256.New, []byte(sk))
-	b, err := boxes.MarshalJSON()
+	b, err := boats.MarshalJSON()
 	if err != nil {
-		log.Fatal(err)
+		return []byte{}, err
 	}
 	h.Write(b)
-	return h.Sum(nil)
+	return h.Sum(nil), nil
 
 }
