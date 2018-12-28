@@ -1,37 +1,49 @@
 package main
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/orbs-network/orbs-contract-sdk/go/sdk/address"
+	"github.com/orbs-network/orbs-contract-sdk/go/sdk/state"
 	"log"
 )
 
 func main() {
-	var carrier ship
-	var battleship ship
-	var cruiser ship
-	var submarine ship
-	var destroyer ship
-	carrier.new("carrier", 0, 0, 0, 4)
-	battleship.new("battleship", 9, 9, 6, 9)
-	cruiser.new("cruiser", 8, 8, 5, 8)
-	submarine.new("submarine", 7, 7, 5, 7)
-	destroyer.new("destroyer", 6, 6, 5, 6)
-	boats := ships{carrier, battleship, cruiser, submarine, destroyer}
-	fmt.Println(boats)
-	b, err := boats.MarshalJSON()
+	player1 := []byte{42, 2, 5, 1, 5}
+	player2 := []byte{26, 26, 2, 25}
+	boardHashed := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2}
+	playerHits := uint8(0)
+	defaultGuesses := guesses{}
+	playerTurn := true
+	defaultLastGuesses := coordinate{}
+	boardApproved := uint8(3)
+
+	thisGame := game{player1, player2, boardHashed, boardHashed, playerHits, playerHits, defaultGuesses, defaultGuesses, playerTurn, defaultLastGuesses, boardApproved, boardApproved}
+	fmt.Println(thisGame)
+	b, err := thisGame.MarshalJSON()
 	if err != nil {
 		log.Fatal(err)
 	}
-	var dec ships
+	var dec game
 	err = dec.UnmarshalJSON(b)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println(dec)
 
+	b, err = hex.DecodeString("7b2230223a22635262694275327544304a47652f647456756f46456b6c4d7942493d222c2231223a22683038636f3878644843465a3977596d776430643242694b2b35593d222c223130223a2241773d3d222c223131223a2241773d3d222c2232223a227571486b5466423341617069384975646258506a4757612b6151714864454477484d6142664b2f38714c6f3d222c2233223a2245686a5957526839314442695256463049473045562b74332b6854612b4f50707837366c67344d36544b493d222c2234223a2241513d3d222c2235223a2241413d3d222c2236223a2265794977496a6f695a586c4a4e45394453545a4e553364705430527261553971526a6c4255543039496e303d222c2237223a2265794977496a6f695a586c4a4e45394453545a4e553364705430527261553971526a6b6966513d3d222c2238223a2241413d3d222c2239223a22657949344f4349364d5377694f446b694f6a4639227d")
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = dec.UnmarshalJSON(b)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(dec)
 }
 
 type coordinate struct {
@@ -111,6 +123,7 @@ func (guesses *guesses) UnmarshalJSON(b []byte) (err error) {
 	return nil
 }
 func (guesses *guesses) exists(coo coordinate) (exists bool) {
+	//return true if the coordinate exists in the previous guesses
 	for _, value := range guesses.playerGuesses {
 		if value == coo {
 			return true
@@ -219,6 +232,46 @@ func (game *game) UnmarshalJSON(b []byte) (err error) {
 	return nil
 
 }
+func (game *game) panicIfNotTurn() {
+	signerAddress := address.GetSignerAddress()
+	if bytes.Equal(signerAddress, game.Player1) {
+		if !game.Player1Turn {
+			panic("not your turn, wait for your turn")
+		}
+	} else if bytes.Equal(signerAddress, game.Player2) {
+		if game.Player1Turn {
+			panic("not your turn, wait for your turn")
+		}
+	} else {
+		panic("you are not registered for this game")
+	}
+}
+func (game *game) panicIfTurn() {
+	signerAddress := address.GetSignerAddress()
+	if bytes.Equal(signerAddress, game.Player1) {
+		if game.Player1Turn {
+			panic("it is your turn, you cannot validate ship")
+		}
+	} else if bytes.Equal(signerAddress, game.Player2) {
+		if !game.Player1Turn {
+			panic("it is your turn, you cannot validate ship")
+		}
+	} else {
+		panic("you are not registered for this game")
+	}
+}
+
+func (game *game) updateGuesses(coo coordinate) {
+	signerAddress := address.GetSignerAddress()
+	if bytes.Equal(signerAddress, game.Player1) {
+		game.Player1Guesses.playerGuesses = append(game.Player1Guesses.playerGuesses, coo)
+	} else if bytes.Equal(signerAddress, game.Player2) {
+		game.Player2Guesses.playerGuesses = append(game.Player2Guesses.playerGuesses, coo)
+	} else {
+		panic("you are not registered in this game")
+	}
+
+}
 
 type games map[uint64]game
 
@@ -249,6 +302,20 @@ func (games *games) UnmarshalJSON(b []byte) (err error) {
 	}
 	return nil
 }
+func (games *games) getGamesFromState() {
+	gamesBytes := state.ReadBytesByKey("games")
+	err := games.UnmarshalJSON(gamesBytes)
+	if err != nil {
+		panic(err)
+	}
+}
+func (games *games) updateState() {
+	b, err := games.MarshalJSON()
+	if err != nil {
+		panic(err)
+	}
+	state.WriteBytesByKey("games", b)
+}
 
 type ship struct {
 	name            string
@@ -258,7 +325,7 @@ type ship struct {
 
 func (boat *ship) new(name string, headX, headY, tailX, tailY uint8) {
 	boat.name = name
-	boat.headCoordinates = coordinate{headX, tailX}
+	boat.headCoordinates = coordinate{headX, headY}
 	boat.tailCoordinates = coordinate{tailX, tailY}
 }
 func (boat *ship) MarshalJSON() (b []byte, err error) {

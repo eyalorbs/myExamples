@@ -17,7 +17,7 @@ func main() {
 		log.Fatal("contract cannot be deployed")
 	}
 
-	out = gammaCli.Run("run-query testing-serialization/battleship/simpleContract/onlyEvent.json")
+	out = gammaCli.Run("run-query testing-serialization/battleship/simpleContract/returnAndEvent.json")
 	var resp response
 	err := json.Unmarshal([]byte(out), &resp)
 	if err != nil {

@@ -16,10 +16,25 @@ import (
 	"math"
 )
 
-var PUBLIC = sdk.Export(startGame, getContractBalance, getUserBalance, getOpponentStatus, guess, updateHit, quitGame, getMyHits, approveBoard, checkIfWon, checkIfInGame)
-var SYSTEM = sdk.Export(_init, PanicIfSignerPlaying, PanicIfSignerNotPlaying, HandleMoney, shipsOk, didLie, startGameEvent, InGame, PanicIfOneOfPlayersApprovedBoard)
+var PUBLIC = sdk.Export(startGame, getContractBalance, getUserBalance, getOpponentStatus, guess, updateHit, quitGame, getMyHits, approveBoard, checkIfWon, checkIfInGame, didOpponentUpdateHit, getPlayersAddress)
+var SYSTEM = sdk.Export(_init, PanicIfSignerPlaying, PanicIfSignerNotPlaying, HandleMoney, shipsOk, didLie, startGameEvent, InGame, PanicIfOneOfPlayersApprovedBoard, hitUpdatedEvent)
 
 //helper coin contract name: ERCBattleship
+
+//delete this function
+func getPlayersAddress() (gameByte []byte) {
+	PanicIfSignerNotPlaying()
+	signerAddress := address.GetSignerAddress()
+	games := make(games)
+	games.getGamesFromState()
+	index := state.ReadUint64ByAddress(signerAddress)
+	game := games[index]
+	b, err := game.MarshalJSON()
+	if err != nil {
+		panic(err)
+	}
+	return b
+}
 
 func _init() {
 	games := make(games)
@@ -33,6 +48,7 @@ func _init() {
 
 func PanicIfOneOfPlayersApprovedBoard() {
 	games := make(games)
+	games.getGamesFromState()
 	relevantGame := games[state.ReadUint64ByAddress(address.GetSignerAddress())]
 	if relevantGame.board1Approved != 3 || relevantGame.board2Approved != 3 {
 		panic("both players need to approve their board")
@@ -127,7 +143,7 @@ func startGame(hashedBoard []byte) {
 			games.updateState()
 
 			//update the state: player's address are read as the index of the game they are playing
-			state.WriteUint64ByAddress(address.GetSignerAddress(), i)
+			state.WriteUint64ByAddress(player1, i)
 			state.ClearByAddress(player2)
 			state.WriteUint64ByAddress(player2, i)
 			HandleMoney() //DON'T FORGET TO REPLACE THIS BY A REAL FUNCTION
@@ -137,29 +153,31 @@ func startGame(hashedBoard []byte) {
 	}
 	panic("no more room for more games, this game is very very very successful")
 }
-func InGame(inGame string) {
+func InGame(inGame string, x, y uint32) {
 
 }
 func checkIfInGame() {
 	signerAddress := address.GetSignerAddress()
-
+	games := make(games)
+	games.getGamesFromState()
+	relevantGame := games[state.ReadUint64ByAddress(signerAddress)]
 	//if there are 256 bits(a hashedBoard) than the player is playing
 	if len(state.ReadBytesByAddress(signerAddress)) == 32 {
-		events.EmitEvent(InGame, "player still in pool")
+		events.EmitEvent(InGame, "player still in pool", uint32(10), uint32(10))
 		return
 	}
 
 	//if the index isn't 0, the player is playing
 	index := state.ReadUint64ByAddress(signerAddress)
 	if index != 0 {
-		events.EmitEvent(InGame, "player is in a game")
+		events.EmitEvent(InGame, "player is in a game", uint32(relevantGame.OpponentLastGuess.X), uint32(relevantGame.OpponentLastGuess.Y))
 		return
 	}
 
-	events.EmitEvent(InGame, "player is neither in pool nor in a game")
+	events.EmitEvent(InGame, "player is neither in pool nor in a game", uint32(10), uint32(10))
 
 }
-
+func guessEvent(response string) {}
 func guess(x, y uint32) {
 	PanicIfSignerNotPlaying()
 	PanicIfOneOfPlayersApprovedBoard()
@@ -174,6 +192,26 @@ func guess(x, y uint32) {
 	relevantGame := games[state.ReadUint64ByAddress(signerAddress)]
 	//validate that the player is only playing if it's his turn
 	relevantGame.panicIfNotTurn()
+
+	if bytes.Equal(relevantGame.Player1, signerAddress) {
+		//if the player needs to approve the board because the game has ended tell him:
+		if relevantGame.board2Approved != 3 {
+			events.EmitEvent(guessEvent, "you need to approve your board")
+		} else if relevantGame.board1Approved != 3 {
+			events.EmitEvent(guessEvent, "you already approved your board, we are in the endgame now")
+		}
+		relevantGame.Player2Guesses.playerGuesses = append(relevantGame.Player1Guesses.playerGuesses)
+
+	} else if bytes.Equal(relevantGame.Player2, signerAddress) {
+		if relevantGame.board1Approved != 3 {
+			events.EmitEvent(guessEvent, "you need to approve your board")
+
+		} else if relevantGame.board2Approved != 3 {
+			events.EmitEvent(guessEvent, "you already approved your board, we are in the endgame now")
+		}
+	} else {
+		panic("you are not registered for this game")
+	}
 	//update last game
 	relevantGame.OpponentLastGuess = coo
 	//update the guesses
@@ -181,6 +219,7 @@ func guess(x, y uint32) {
 	//update state:
 	games[state.ReadUint64ByAddress(signerAddress)] = relevantGame
 	games.updateState()
+	events.EmitEvent(guessEvent, "guess submitted")
 
 }
 func (coo *coordinate) validateGuessCoordinates() {
@@ -211,6 +250,7 @@ func (coo *coordinate) validateGuessCoordinates() {
 func getOpponentStatus() (x, y uint32) {
 	signerAddress := address.GetSignerAddress()
 	PanicIfSignerNotPlaying()
+	PanicIfOneOfPlayersApprovedBoard()
 	//get games and index of player
 	index := state.ReadUint64ByAddress(signerAddress)
 	games := make(games)
@@ -229,7 +269,7 @@ func getOpponentStatus() (x, y uint32) {
 
 	//if the opponent hasn't played yed, panic. otherwise return the opponent guess
 	opponentGuess := relevantGame.OpponentLastGuess
-	EmptyGuess := coordinate{0, 0}
+	EmptyGuess := coordinate{}
 	if opponentGuess == EmptyGuess {
 		panic("opponent didn't play yet")
 	}
@@ -278,6 +318,35 @@ func updateHit(hit uint32) {
 			relevantGame.Player2Hits += 1
 		}
 	}
+	//update state and games
+	games[state.ReadUint64ByAddress(signerAddress)] = relevantGame
+	games.updateState()
+}
+
+func hitUpdatedEvent(hit uint32) {}
+func didOpponentUpdateHit() {
+	PanicIfSignerNotPlaying()
+	signerAddress := address.GetSignerAddress()
+	games := make(games)
+	games.getGamesFromState()
+	index := state.ReadUint64ByAddress(signerAddress)
+	relevantGame := games[index]
+	if bytes.Equal(relevantGame.Player1, signerAddress) {
+		if len(relevantGame.Player1Guesses.playerGuesses) == len(relevantGame.Player1Guesses.opponentResponses) {
+			events.EmitEvent(hitUpdatedEvent, uint32(1))
+			return
+		}
+		events.EmitEvent(hitUpdatedEvent, uint32(0))
+	} else if bytes.Equal(relevantGame.Player2, signerAddress) {
+		if len(relevantGame.Player1Guesses.playerGuesses) == len(relevantGame.Player1Guesses.opponentResponses) {
+			events.EmitEvent(hitUpdatedEvent, uint32(1))
+			return
+		}
+		events.EmitEvent(hitUpdatedEvent, uint32(0))
+	} else {
+		panic("it is not your turn")
+	}
+
 }
 
 func getMyHits() (hits uint32) {
@@ -727,11 +796,11 @@ func (game *game) panicIfNotTurn() {
 	signerAddress := address.GetSignerAddress()
 	if bytes.Equal(signerAddress, game.Player1) {
 		if !game.Player1Turn {
-			panic("not your turn, wait for your turn")
+			panic("not your turn, wait for your turn - first if")
 		}
 	} else if bytes.Equal(signerAddress, game.Player2) {
 		if game.Player1Turn {
-			panic("not your turn, wait for your turn")
+			panic("not your turn, wait for your turn - second if")
 		}
 	} else {
 		panic("you are not registered for this game")
