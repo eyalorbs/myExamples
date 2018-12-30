@@ -16,7 +16,7 @@ import (
 	"math"
 )
 
-var PUBLIC = sdk.Export(startGame, getContractBalance, getUserBalance, getOpponentStatus, guess, updateHit, quitGame, getMyHits, approveBoard, checkIfWon, checkIfInGame, didOpponentUpdateHit, getPlayersAddress)
+var PUBLIC = sdk.Export(startGame, getContractBalance, getUserBalance, getOpponentStatus, guess, updateHit, quitGame, getMyHits, approveBoard, checkIfWon, checkIfInGame, didOpponentUpdateHit, getPlayersAddress, getIfWonLastGame)
 var SYSTEM = sdk.Export(_init, PanicIfSignerPlaying, PanicIfSignerNotPlaying, HandleMoney, shipsOk, didLie, startGameEvent, InGame, PanicIfOneOfPlayersApprovedBoard, hitUpdatedEvent)
 
 //helper coin contract name: ERCBattleship
@@ -53,6 +53,11 @@ func PanicIfOneOfPlayersApprovedBoard() {
 	if relevantGame.board1Approved != 3 || relevantGame.board2Approved != 3 {
 		panic("both players need to approve their board")
 	}
+}
+
+func getIfWonLastGame() (didWin uint32) {
+	PanicIfSignerPlaying()
+	return service.CallMethod("winnerContract", "getWinner", address.GetSignerAddress())[0].(uint32)
 }
 
 func PanicIfSignerPlaying() {
@@ -200,7 +205,7 @@ func guess(x, y uint32) {
 		} else if relevantGame.board1Approved != 3 {
 			events.EmitEvent(guessEvent, "you already approved your board, we are in the endgame now")
 		}
-		relevantGame.Player2Guesses.playerGuesses = append(relevantGame.Player1Guesses.playerGuesses)
+		relevantGame.Player1Guesses.playerGuesses = append(relevantGame.Player1Guesses.playerGuesses, coo)
 
 	} else if bytes.Equal(relevantGame.Player2, signerAddress) {
 		if relevantGame.board1Approved != 3 {
@@ -209,13 +214,12 @@ func guess(x, y uint32) {
 		} else if relevantGame.board2Approved != 3 {
 			events.EmitEvent(guessEvent, "you already approved your board, we are in the endgame now")
 		}
+		relevantGame.Player2Guesses.playerGuesses = append(relevantGame.Player2Guesses.playerGuesses, coo)
 	} else {
 		panic("you are not registered for this game")
 	}
 	//update last game
 	relevantGame.OpponentLastGuess = coo
-	//update the guesses
-	relevantGame.updateGuesses(coo)
 	//update state:
 	games[state.ReadUint64ByAddress(signerAddress)] = relevantGame
 	games.updateState()
@@ -225,7 +229,7 @@ func guess(x, y uint32) {
 func (coo *coordinate) validateGuessCoordinates() {
 	//make sure user is playing
 	PanicIfSignerNotPlaying()
-	if 10 < coo.X || 10 < coo.Y {
+	if coo.X == 0 || 10 < coo.X || 10 < coo.Y || coo.Y == 0 {
 		panic("guess out of range")
 	}
 	//get the relevant game
@@ -318,6 +322,7 @@ func updateHit(hit uint32) {
 			relevantGame.Player2Hits += 1
 		}
 	}
+	relevantGame.OpponentLastGuess = coordinate{}
 	//update state and games
 	games[state.ReadUint64ByAddress(signerAddress)] = relevantGame
 	games.updateState()
@@ -573,6 +578,8 @@ func checkIfWon() (player1, player2 bool) {
 	if relevantGame.board1Approved == 3 || relevantGame.board2Approved == 3 {
 		panic("both players need to prove their board is ok")
 	}
+	player1Address := relevantGame.Player1
+	player2Address := relevantGame.Player2
 	board1Approved := relevantGame.board1Approved
 	board2Approved := relevantGame.board2Approved
 	player1Hits := relevantGame.Player1Hits
@@ -585,22 +592,32 @@ func checkIfWon() (player1, player2 bool) {
 	if board1Approved == 2 {
 		if board2Approved == 2 {
 			//if both player's cheated, none of them get their money
+			service.CallMethod("winnerContract", "writeWinner", player1Address, 1)
+			service.CallMethod("winnerContract", "writeWinner", player2Address, 1)
 			return false, false
 		} else {
 			//if only player1 cheated, player2 wins
+			service.CallMethod("winnerContract", "writeWinner", player1Address, 1)
+			service.CallMethod("winnerContract", "writeWinner", player2Address, 2)
 			return false, true
 		}
 	} else {
 		//if only player2 cheated, player1 wins
 		if board2Approved == 2 {
+			service.CallMethod("winnerContract", "writeWinner", player1Address, 2)
+			service.CallMethod("winnerContract", "writeWinner", player2Address, 1)
 			return true, false
 		}
 	}
 
 	//if neither player's cheated, whoever has 17 hits wins
 	if player1Hits == 17 {
+		service.CallMethod("winnerContract", "writeWinner", player1Address, 2)
+		service.CallMethod("winnerContract", "writeWinner", player2Address, 1)
 		return true, false
 	} else {
+		service.CallMethod("winnerContract", "writeWinner", player1Address, 1)
+		service.CallMethod("winnerContract", "writeWinner", player2Address, 2)
 		return false, true
 	}
 

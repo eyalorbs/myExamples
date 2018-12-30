@@ -6,19 +6,23 @@ import (
 	"github.com/orbs-network/orbs-contract-sdk/go/sdk/service"
 )
 
-var PUBLIC = sdk.Export(transfer, getBattleShipBalance, getUserBalance)
+var PUBLIC = sdk.Export(transferToContract, transferToUser, getBattleShipBalance, getUserBalance)
 var SYSTEM = sdk.Export(_init)
 
 func _init() {
 
 }
 
-func transfer(tokens uint64) {
-	service.CallMethod("ERC20Token", "transfer", address.GetCallerAddress(), tokens)
+func transferToContract(tokens uint64) {
+	service.CallMethod("token", "transfer", address.GetCallerAddress(), tokens)
 }
 
+func transferToUser(tokens uint64) {
+	service.CallMethod("token", "approve", 7)
+	service.CallMethod("token", "transfer", address.GetSignerAddress(), tokens)
+}
 func getBattleShipBalance() (tokens uint64) {
-	value := service.CallMethod("ERC20Token", "balanceOf", address.GetCallerAddress())[0]
+	value := service.CallMethod("token", "balanceOf", address.GetCallerAddress())[0]
 	if tokens, ok := value.(uint64); ok {
 		return tokens
 	}
@@ -26,7 +30,7 @@ func getBattleShipBalance() (tokens uint64) {
 }
 
 func getUserBalance() (tokens uint64) {
-	value := service.CallMethod("ERC20Token", "balanceOf", address.GetSignerAddress())[0]
+	value := service.CallMethod("token", "balanceOf", address.GetSignerAddress())[0]
 	if tokens, ok := value.(uint64); ok {
 		return tokens
 	}

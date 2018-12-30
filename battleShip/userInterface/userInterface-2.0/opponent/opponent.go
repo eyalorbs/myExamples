@@ -7,17 +7,17 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/orbs-network/orbs-contract-sdk/go/testing/gamma"
 	"github.com/pkg/errors"
 	"log"
 	"math"
+	"myExamples/silentGamma"
 	"os"
 	"strconv"
 	"strings"
 )
 
 func main() {
-	gammaCli := gamma.Cli().Start()
+	gammaCli := silentGamma.Cli().Start()
 	defer gammaCli.Stop()
 	//set the reader
 	reader := bufio.NewReader(os.Stdin)
@@ -147,12 +147,22 @@ func main() {
 					if doContinue {
 						continue
 					}
+					sentMessage := false
+
 					for {
 						out = gammaCli.Run("send-tx battleShip/jsons/getOpponentStatus.json -signer user" + strconv.Itoa(user))
 						resp.getResponse(out)
 						x, y, err, doBreak, doContinue := resp.getOpponentGuess()
 						if err != nil {
-							fmt.Println(err)
+							if err.Error() == "opponent didn't play yet" {
+								if !sentMessage {
+									fmt.Println(err)
+									sentMessage = !sentMessage
+								}
+							} else {
+								fmt.Println(err)
+							}
+
 						}
 						if doContinue {
 							continue
@@ -243,7 +253,7 @@ func main() {
 					continue
 				}
 				//gets here after hits are updated
-				out = gammaCli.Run("send-tx battleShip/jsons/getMyHits.json")
+				out = gammaCli.Run("send-tx battleShip/jsons/getMyHits.json -signer user" + strconv.Itoa(user))
 				resp.getResponse(out)
 				newHits, err := resp.getMyHits()
 				if err != nil {
@@ -255,7 +265,7 @@ func main() {
 					//update the hits
 					newHits = numOfHits
 					//update the board
-					board[x][y] = '*'
+					board[x-1][y-1] = '*'
 					//notify the player
 					fmt.Println("you hit!")
 					board.printBoard()
@@ -274,17 +284,26 @@ func main() {
 					//if missed
 				} else {
 					fmt.Println("you missed :-(")
-					board[x][y] = 'O'
+					board[x-1][y-1] = 'O'
 					board.printBoard()
 				}
 
 				fmt.Println("waiting for your opponent to guess...")
+				sentMessage := false
 				for {
 					out = gammaCli.Run("send-tx battleShip/jsons/getOpponentStatus.json -signer user" + strconv.Itoa(user))
 					resp.getResponse(out)
 					x, y, err, doBreak, doContinue := resp.getOpponentGuess()
 					if err != nil {
-						fmt.Println(err)
+						if err.Error() == "opponent didn't play yet" {
+							if !sentMessage {
+								fmt.Println(err)
+								sentMessage = !sentMessage
+							}
+						} else {
+							fmt.Println(err)
+						}
+
 					}
 					if doContinue {
 						continue
@@ -308,11 +327,27 @@ func main() {
 			}
 
 		} else if input == "quit" {
-			out = gammaCli.Run("send-tx battleShip/jsons/quitGame.json")
+			out = gammaCli.Run("send-tx battleShip/jsons/quitGame.json -signer user" + strconv.Itoa(user))
 
 		} else if input == "test" {
-			gammaCli.Run("send-tx battleShip/jsons/getPlayersAddress.json -signer user" + strconv.Itoa(user))
+			out = gammaCli.Run("send-tx battleShip/jsons/getPlayersAddress.json -signer user" + strconv.Itoa(user))
+			resp.getResponse(out)
+			fmt.Println(resp.OutputArguments[0])
 
+		} else if input == "didWinLastGame" {
+			out = gammaCli.Run("run-query battleShip/jsons/getIfWon.json -signer user" + strconv.Itoa(user))
+			resp.getResponse(out)
+			if resp.OutputArguments[0].Type == "string" {
+				fmt.Println("you are playing a game right now")
+			} else {
+				if resp.OutputArguments[0].Value == "0" {
+					fmt.Println("you do not have any previous games played")
+				} else if resp.OutputArguments[0].Value == "1" {
+					fmt.Println("you lost the last game")
+				} else {
+					fmt.Println("you won the last game")
+				}
+			}
 		} else {
 			fmt.Println("that command is not recognized")
 		}

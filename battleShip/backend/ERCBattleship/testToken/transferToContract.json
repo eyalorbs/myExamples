@@ -1,0 +1,6 @@
+{
+  "ContractName": "moneyContract",
+  "MethodName": "transferToContract",
+  "Arguments": [
+  ]
+}
