@@ -1,9 +1,13 @@
 {
   "ContractName": "token",
-  "MethodName": "balanceOf",
+  "MethodName": "allowance",
   "Arguments": [
     {
       "Type": "gamma:keys-file-address",
+      "Value": "user1"
+    },
+    {
+      "Type": "bytes",
       "Value": "user2"
     }
 

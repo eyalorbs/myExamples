@@ -97,7 +97,6 @@ func transferFrom(from, to []byte, tokens uint64) {
 
 	//update token owner account
 	state.WriteUint64ByAddress(from, Sub(state.ReadUint64ByAddress(from), tokens))
-
 	//update allowance
 	state.WriteUint64ByAddress(key, Sub(state.ReadUint64ByAddress(key), tokens))
 

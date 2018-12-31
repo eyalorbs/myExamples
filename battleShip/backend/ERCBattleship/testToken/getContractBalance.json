@@ -1,6 +1,0 @@
-{
-  "ContractName": "moneyContract",
-  "MethodName": "getContractBalance",
-  "Arguments": [
-  ]
-}

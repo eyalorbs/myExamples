@@ -23,7 +23,7 @@ func main() {
 	reader := bufio.NewReader(os.Stdin)
 	//deploy contract
 	out := gammaCli.Run("deploy battleShip/backend/battleship.go")
-
+	out = gammaCli.Run("deploy battleShip/backend/winnerContract/winnerContract.go")
 	//get the ships
 	boats := ships{}
 	//user interface to get ships
@@ -150,7 +150,7 @@ func main() {
 					sentMessage := false
 
 					for {
-						out = gammaCli.Run("send-tx battleShip/jsons/getOpponentStatus.json -signer user" + strconv.Itoa(user))
+						out = gammaCli.Run("run-query battleShip/jsons/getOpponentStatus.json -signer user" + strconv.Itoa(user))
 						resp.getResponse(out)
 						x, y, err, doBreak, doContinue := resp.getOpponentGuess()
 						if err != nil {
@@ -210,21 +210,35 @@ func main() {
 			//run command and get response
 			out = gammaCli.Run("send-tx battleShip/jsons/guess.json -arg1 " + strconv.Itoa(int(x)) + " -arg2 " + strconv.Itoa(int(y)) + " -signer user" + strconv.Itoa(user))
 			resp.getResponse(out)
-			event, err := resp.getEventGuess()
+			event, panics, err := resp.getEventGuess()
 			//if there is an error print it and continue to the next iteration
 			if err != nil {
 				fmt.Println(err)
 				continue
 			}
-
 			doContinue := false
-			if event == "you need to approve your board" {
+			if event == "approve your board" || panics == "both players need to approve their board" {
 				out = gammaCli.Run("send-tx battleShip/jsons/approveBoard.json -arg1 " + secretKey + " -arg2 " + hex.EncodeToString(marshaledShips) + " -signer user" + strconv.Itoa(user))
-				if len(resp.getReturns()) != 0 {
-					fmt.Println(resp.getReturns()[0].Value)
-					continue
+				for {
+					out = gammaCli.Run("send-tx battleship/jsons/finishGame.json -signer user" + strconv.Itoa(user))
+					out = gammaCli.Run("send-tx battleShip/jsons/checkIfInGame.json -signer user" + strconv.Itoa(user))
+					//get the response
+					resp.getResponse(out)
+					_, dobreak := resp.getEventCheckIfInGame()
+					if dobreak {
+						out = gammaCli.Run("send-tx battleShip/jsons/checkIfWon.json -signer user" + strconv.Itoa(user))
+						resp.getResponse(out)
+						if resp.OutputArguments[0].Value == "1" {
+							log.Fatal("you lost... try not to lose next time... maybe that way you'll win")
+						}
+						if resp.OutputArguments[0].Value == "2" {
+							log.Fatal("congratulations! you won")
+						} else {
+							fmt.Println("didn't think this would happen fkjdszk;rjdfwu54eijordsfndfjndzjncvx;jnxdl;kcmvdflz;kjvl;kxjvlk;fjv;lkxfjv;dfzjv;fjv;zfdjvoshrtoifjdvxnczjfxkfjdlkfjdlksfjldksfjlkdsjflksdjflkdsjflksjflkjdklfjldkjflk")
+							continue
+						}
+					}
 				}
-				fmt.Println("your board has been auto approved")
 
 			} else if event == "you already approved your board, we are in the endgame now" {
 				fmt.Println(event)
@@ -263,7 +277,7 @@ func main() {
 				//if hit
 				if numOfHits < newHits {
 					//update the hits
-					newHits = numOfHits
+					numOfHits = newHits
 					//update the board
 					board[x-1][y-1] = '*'
 					//notify the player
@@ -272,15 +286,33 @@ func main() {
 					//if has enough point to win, prove the board is ok, and check if won
 					if numOfHits == 17 {
 						out = gammaCli.Run("send-tx battleShip/jsons/approveBoard.json -arg1 " + secretKey + " -arg2 " + hex.EncodeToString(marshaledShips) + " -signer user" + strconv.Itoa(user))
-						out = gammaCli.Run("send-tx battleShip/jsons/checkIfWon.json -signer user" + strconv.Itoa(user))
-						resp.getResponse(out)
-						err := resp.getCheckIfWon()
-						if err != nil {
-							fmt.Println(err)
-						}
+
 						fmt.Println("waiting for opponent to approve board")
-						continue
+						for {
+							out = gammaCli.Run("send-tx battleship/jsons/finishGame.json -signer user" + strconv.Itoa(user))
+							out = gammaCli.Run("send-tx battleShip/jsons/checkIfInGame.json -signer user" + strconv.Itoa(user))
+							//get the response
+							resp.getResponse(out)
+							_, dobreak := resp.getEventCheckIfInGame()
+							if dobreak {
+								out = gammaCli.Run("send-tx battleShip/jsons/checkIfWon.json -signer user" + strconv.Itoa(user))
+								resp.getResponse(out)
+								if resp.OutputArguments[0].Value == "1" {
+									log.Fatal("you lost... try not to lose next time... maybe that way you'll win")
+								}
+								if resp.OutputArguments[0].Value == "2" {
+									log.Fatal("congratulations! you won")
+								} else {
+									fmt.Println("didn't expect this asffdjdkjfekrjflkaerjfh;ahjferawhfoierahfdshfaehjfposehjfaehjfpaerhfowaefhpseafhasfhparsfhparghaprghpidsuhfgawrhzpofjfgjg;arjgpasej poershjfporjgpsej")
+									continue
+								}
+							}
+
+						}
 					}
+					//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+					///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 					//if missed
 				} else {
 					fmt.Println("you missed :-(")
@@ -291,7 +323,7 @@ func main() {
 				fmt.Println("waiting for your opponent to guess...")
 				sentMessage := false
 				for {
-					out = gammaCli.Run("send-tx battleShip/jsons/getOpponentStatus.json -signer user" + strconv.Itoa(user))
+					out = gammaCli.Run("run-query battleShip/jsons/getOpponentStatus.json -signer user" + strconv.Itoa(user))
 					resp.getResponse(out)
 					x, y, err, doBreak, doContinue := resp.getOpponentGuess()
 					if err != nil {
@@ -335,7 +367,7 @@ func main() {
 			fmt.Println(resp.OutputArguments[0])
 
 		} else if input == "didWinLastGame" {
-			out = gammaCli.Run("run-query battleShip/jsons/getIfWon.json -signer user" + strconv.Itoa(user))
+			out = gammaCli.Run("run-query battleShip/jsons/checkIfWon.json -signer user" + strconv.Itoa(user))
 			resp.getResponse(out)
 			if resp.OutputArguments[0].Type == "string" {
 				fmt.Println("you are playing a game right now")
@@ -423,20 +455,25 @@ func (resp *response) getEventCheckIfInGame() (err error, doContinue bool) {
 
 }
 
-func (resp *response) getEventGuess() (event string, err error) {
+func (resp *response) getEventGuess() (event string, panic string, err error) {
 	//get the returns
 	returns := resp.getReturns()
 	//if there is a return value, it is a panic. pass it as an error
 	if len(returns) != 0 {
-		return "", errors.New(returns[0].Value)
+		if returns[0].Value == "both players need to approve their board" {
+			return "", returns[0].Value, nil
+		}
+		return "", "", errors.New(returns[0].Value)
 	}
 	//get the events
 	returns = resp.getEvents()
-	if len(returns) != 1 {
-		return "", errors.New("unexpected number of events")
+	if len(returns) == 1 {
+		return returns[0].Value, "", nil
+	} else if len(returns) == 2 {
+		return returns[1].Value, "", nil
+	} else {
+		return "", "", errors.New("unexpected number of events")
 	}
-
-	return returns[0].Value, nil
 
 }
 
@@ -478,12 +515,23 @@ func (resp *response) getMyHits() (hits uint8, err error) {
 	}
 }
 
-func (resp *response) getCheckIfWon() (err error) {
+func (resp *response) getCheckIfWon() (player1Won, player2Won bool, err error) {
 	returns := resp.getReturns()
-	if len(returns) != 0 {
-		return errors.New(returns[0].Value)
+	if len(returns) == 1 {
+		return false, false, errors.New(returns[0].Value)
 	}
-	return nil
+	if len(returns) == 2 {
+		player1, err := strconv.Atoi(returns[0].Value)
+		if err != nil {
+			return false, false, err
+		}
+		player2, err := strconv.Atoi(returns[1].Value)
+		if err != nil {
+			return false, false, err
+		}
+		return player1 == 1, player2 == 1, err
+	}
+	return false, false, errors.New("unexpected length of return values")
 }
 
 func (resp *response) getOpponentGuess() (x, y uint8, err error, doBreak, doContinue bool) {
@@ -498,7 +546,7 @@ func (resp *response) getOpponentGuess() (x, y uint8, err error, doBreak, doCont
 
 		}
 	} else if len(returns) == 2 {
-		X, err := strconv.Atoi(returns[1].Value)
+		X, err := strconv.Atoi(returns[0].Value)
 		if err != nil {
 			return 10, 10, errors.New("error converting to int"), true, false
 		}

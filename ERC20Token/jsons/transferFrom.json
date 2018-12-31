@@ -1,15 +1,20 @@
 {
   "ContractName": "token",
-  "MethodName": "transfer",
+  "MethodName": "transferFrom",
   "Arguments": [
     {
       "Type": "gamma:keys-file-address",
-      "Value": "user2"
+      "Value": "user1"
+    },
+    {
+      "Type": "bytes",
+      "Value": ""
     },
     {
       "Type": "uint64",
-      "Value": "10"
+      "Value": "0"
     }
 
   ]
 }
+

@@ -1,6 +1,6 @@
 {
 "ContractName": "battleship",
-"MethodName": "checkIfWon",
+"MethodName": "getIfWonLastGame",
 "Arguments": [
 
 ]

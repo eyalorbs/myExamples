@@ -1,0 +1,15 @@
+{
+  "ContractName": "token",
+  "MethodName": "approve",
+  "Arguments": [
+    {
+      "Type": "bytes",
+      "Value": ""
+    },
+    {
+      "Type": "uint64",
+      "Value": ""
+    }
+
+  ]
+}
