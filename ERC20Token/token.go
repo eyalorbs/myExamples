@@ -65,7 +65,7 @@ func transfer(to []byte, tokens uint64) {
 	address.ValidateAddress(to)
 
 	//update spender's tokens
-	state.WriteUint64ByAddress(address.GetSignerAddress(), Sub(state.ReadUint64ByAddress(address.GetSignerAddress()), tokens))
+	state.WriteUint64ByAddress(address.GetCallerAddress(), Sub(state.ReadUint64ByAddress(address.GetCallerAddress()), tokens))
 
 	//update receiver's tokens
 	state.WriteUint64ByAddress(to, Add(state.ReadUint64ByAddress(to), tokens))
@@ -78,7 +78,7 @@ func approve(spender []byte, tokens uint64) {
 	//validate address
 	address.ValidateAddress(spender)
 	//get the key
-	key := append(address.GetSignerAddress(), spender...)
+	key := append(address.GetCallerAddress(), spender...)
 	state.WriteUint64ByAddress(key, Add(state.ReadUint64ByAddress(key), tokens))
 
 	//TODO: add an event
@@ -99,7 +99,6 @@ func transferFrom(from, to []byte, tokens uint64) {
 	state.WriteUint64ByAddress(from, Sub(state.ReadUint64ByAddress(from), tokens))
 	//update allowance
 	state.WriteUint64ByAddress(key, Sub(state.ReadUint64ByAddress(key), tokens))
-
 	//update receiver's tokens
 	state.WriteUint64ByAddress(to, Add(state.ReadUint64ByAddress(to), tokens))
 }

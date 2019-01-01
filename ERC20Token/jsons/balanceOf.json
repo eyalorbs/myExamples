@@ -3,8 +3,8 @@
   "MethodName": "balanceOf",
   "Arguments": [
     {
-      "Type": "gamma:keys-file-address",
-      "Value": "user3"
+      "Type": "bytes",
+      "Value": ""
     }
 
   ]

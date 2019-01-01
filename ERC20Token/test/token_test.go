@@ -11,7 +11,7 @@ func Test(t *testing.T) {
 	defer gammaCli.Stop()
 
 	//check if the contract was successfully deployed
-	out := gammaCli.Run("deploy ../token.go -name ERC20Token -signer user1")
+	out := gammaCli.Run("deploy ../token.go -signer user1")
 	if !strings.Contains(out, `"ExecutionResult": "SUCCESS"`) {
 		t.Fatal("deploy failed")
 	}
@@ -52,7 +52,7 @@ func Test(t *testing.T) {
 		t.Fatal("transfer From failed")
 	}
 
-	//check the balance of user3 after transfer
+	//ch	eck the balance of user3 after transfer
 	out = gammaCli.Run("run-query ../jsons/balanceOf-user3.json")
 	if !strings.Contains(out, `"Value": "20"`) {
 		t.Fatal("value of user3 after transferFrom failed")

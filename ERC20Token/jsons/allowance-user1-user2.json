@@ -1,5 +1,5 @@
 {
-  "ContractName": "ERC20Token",
+  "ContractName": "token",
   "MethodName": "allowance",
   "Arguments": [
     {
