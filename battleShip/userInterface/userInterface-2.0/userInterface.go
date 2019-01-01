@@ -7,23 +7,25 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/orbs-network/orbs-contract-sdk/go/testing/gamma"
+	"github.com/orbs-network/orbs-network-go/crypto/hash"
 	"github.com/pkg/errors"
 	"log"
 	"math"
-	"myExamples/silentGamma"
 	"os"
 	"strconv"
 	"strings"
 )
 
 func main() {
-	gammaCli := silentGamma.Cli().Start()
+	gammaCli := gamma.Cli().Start()
 	defer gammaCli.Stop()
 	//set the reader
 	reader := bufio.NewReader(os.Stdin)
 	//deploy contract
 	out := gammaCli.Run("deploy battleShip/backend/battleship.go")
 	out = gammaCli.Run("deploy battleShip/backend/winnerContract/winnerContract.go")
+	out = gammaCli.Run("deploy battleShip/backend/ERCBattleship/tokenBridge.go")
 	//get the ships
 	boats := ships{}
 	//user interface to get ships
@@ -97,6 +99,8 @@ func main() {
 		log.Fatal("invalid input")
 
 	}
+
+	out = gammaCli.Run("send-tx ERC20Token/jsons/approve.json -arg1 " + hex.EncodeToString(hash.CalcRipemd160Sha256([]byte("tokenBridge"))) + " -arg2 5 -signer user" + strconv.Itoa(user))
 
 	//get the player's ship coordinates
 	coo := coordinates{}
@@ -204,9 +208,11 @@ func main() {
 			//get the coordinate
 			x, y, err := getCoordinatesFromUser()
 			if err != nil {
-				fmt.Println("invalid input")
+				fmt.Println("invalid coordinate")
 				continue
 			}
+			fmt.Println("coordinates received")
+
 			//run command and get response
 			out = gammaCli.Run("send-tx battleShip/jsons/guess.json -arg1 " + strconv.Itoa(int(x)) + " -arg2 " + strconv.Itoa(int(y)) + " -signer user" + strconv.Itoa(user))
 			resp.getResponse(out)

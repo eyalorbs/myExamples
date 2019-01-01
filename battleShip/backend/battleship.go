@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"github.com/orbs-network/orbs-contract-sdk/go/sdk"
 	"github.com/orbs-network/orbs-contract-sdk/go/sdk/address"
@@ -105,7 +106,7 @@ func startGame(hashedBoard []byte) {
 	if len(hashedBoard) != 32 {
 		panic("hashed board must be 256 bits")
 	}
-	/////////////////////////////////////todo service.CallMethod("tokenBridge", "transferToContract", address.GetCallerAddress(), uint64(5))
+	service.CallMethod("tokenBridge", "transferToContract", address.GetCallerAddress(), uint64(5))
 	//get the games from the state
 	games := make(games)
 	games.getGamesFromState()
@@ -552,7 +553,7 @@ func approveBoard(secretKey string, Marshaledships []byte) {
 
 }
 
-func checkIfWon() (player1, player2 uint32) {
+func checkIfWon() {
 	PanicIfSignerNotPlaying()
 	//get games and relevant game
 	games := make(games)
@@ -577,28 +578,29 @@ func checkIfWon() (player1, player2 uint32) {
 	state.ClearByAddress(relevantGame.Player1)
 	state.ClearByAddress(relevantGame.Player2)
 	games.updateState()
+	bridgeAddress, _ := hex.DecodeString("8fef8b50287ce37cd9a738393822c20ba0b7cf2d")
 
 	if board1Approved == 2 {
 		if board2Approved == 2 {
 			//if both player's cheated, none of them get their money
 			service.CallMethod("winnerContract", "writeWinner", player1Address, uint32(1))
 			service.CallMethod("winnerContract", "writeWinner", player2Address, uint32(1))
-			return 0, 0
 		} else {
 			//if only player1 cheated, player2 wins
 			service.CallMethod("winnerContract", "writeWinner", player1Address, uint32(1))
 			service.CallMethod("winnerContract", "writeWinner", player2Address, uint32(2))
-
-			//////////////////////////////////////////////////todo service.CallMethod("token", "transfer", player2Address, uint64(9))
-			return 0, 1
+			//give the tokens to the winner
+			service.CallMethod("token", "approve", bridgeAddress, uint64(9))
+			service.CallMethod("tokenBridge", "transferToWinner", player2Address, uint64(9))
 		}
 	} else {
 		//if only player2 cheated, player1 wins
 		if board2Approved == 2 {
 			service.CallMethod("winnerContract", "writeWinner", player1Address, uint32(2))
 			service.CallMethod("winnerContract", "writeWinner", player2Address, uint32(1))
-			//////////////////////////////////////////////////todo service.CallMethod("token", "transfer", player1Address, uint64(9))
-			return 1, 0
+			//give the tokens to the winner
+			service.CallMethod("token", "approve", bridgeAddress, uint64(9))
+			service.CallMethod("tokenBridge", "transferToWinner", player1Address, uint64(9))
 		}
 	}
 
@@ -606,13 +608,15 @@ func checkIfWon() (player1, player2 uint32) {
 	if player1Hits == 17 {
 		service.CallMethod("winnerContract", "writeWinner", player1Address, uint32(2))
 		service.CallMethod("winnerContract", "writeWinner", player2Address, uint32(1))
-		//////////////////////////////////////////////////todo service.CallMethod("token", "transfer", player1Address, uint64(9))
-		return 1, 0
+		//give the tokens to the winner
+		service.CallMethod("token", "approve", bridgeAddress, uint64(9))
+		service.CallMethod("tokenBridge", "transferToWinner", player1Address, uint64(9))
 	} else {
 		service.CallMethod("winnerContract", "writeWinner", player1Address, uint32(1))
 		service.CallMethod("winnerContract", "writeWinner", player2Address, uint32(2))
-		//////////////////////////////////////////////////todo service.CallMethod("token", "transfer", player2Address, uint64(9))
-		return 0, 1
+		//give the tokens to the winner
+		service.CallMethod("token", "approve", bridgeAddress, uint64(9))
+		service.CallMethod("tokenBridge", "transferToWinner", player2Address, uint64(9))
 	}
 
 }
