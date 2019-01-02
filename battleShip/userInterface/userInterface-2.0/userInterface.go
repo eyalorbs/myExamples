@@ -7,33 +7,37 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/orbs-network/orbs-contract-sdk/go/testing/gamma"
 	"github.com/orbs-network/orbs-network-go/crypto/hash"
 	"github.com/pkg/errors"
 	"log"
 	"math"
-	"myExamples/silentGamma"
 	"os"
 	"strconv"
 	"strings"
 )
 
 func main() {
-	gammaCli := silentGamma.Cli().Start()
+	fmt.Println("starting gamma...")
+	gammaCli := gamma.Cli().Start()
+	fmt.Println("gamma started")
 	defer gammaCli.Stop()
 	//set the reader
 	reader := bufio.NewReader(os.Stdin)
 	//deploy contract
+	fmt.Println("deploying essential contracts...")
 	out := gammaCli.Run("deploy battleShip/backend/battleship.go")
 	out = gammaCli.Run("deploy battleShip/backend/winnerContract/winnerContract.go")
 	out = gammaCli.Run("deploy battleShip/backend/ERCBattleship/tokenBridge.go")
+	fmt.Println("essential contracts deployed")
 	//get the ships
 	boats := ships{}
 	//user interface to get ships
 
+	names := []string{"Carrier", "Battleship", "Cruiser", "Submarine", "Destroyer"}
 	for i := 0; i < 5; i++ {
 		var boat ship
-		fmt.Println("enter the name of the ship")
-		name, _ := reader.ReadString('\n')
+		fmt.Println("enter " + names[i] + " head and tail coordinates")
 		fmt.Println("enter headX, headY, tailX, tailY")
 		var headX uint8
 		var headY uint8
@@ -56,12 +60,12 @@ func main() {
 			log.Fatal(err)
 		}
 
-		boat.new(name, headX, headY, tailX, tailY)
+		boat.new(names[i], headX, headY, tailX, tailY)
 		boats = append(boats, boat)
 	}
 
+	//auto generated ships
 	/*
-		//auto generated ships
 		var boat1 ship
 		var boat2 ship
 		var boat3 ship
@@ -74,6 +78,7 @@ func main() {
 		boat5.new("Destroyer", 5, 5, 6, 5)
 		boats = ships{boat1, boat2, boat3, boat4, boat5}
 	*/
+
 	//variables for the loop:
 
 	//get the secret key
@@ -99,8 +104,6 @@ func main() {
 
 	}
 
-	out = gammaCli.Run("send-tx ERC20Token/jsons/approve.json -arg1 " + hex.EncodeToString(hash.CalcRipemd160Sha256([]byte("tokenBridge"))) + " -arg2 5 -signer user" + strconv.Itoa(user))
-
 	//get the player's ship coordinates
 	coo := coordinates{}
 	coo.getCoordinates(boats)
@@ -120,6 +123,10 @@ func main() {
 
 		//handle input
 		if input == "startGame" {
+			out = gammaCli.Run("send-tx ERC20Token/jsons/approve.json -arg1 " + hex.EncodeToString(hash.CalcRipemd160Sha256([]byte("tokenBridge"))) + " -arg2 5 -signer user" + strconv.Itoa(user))
+			if !strings.Contains(out, `"ExecutionResult": "SUCCESS"`) {
+				log.Fatal("you do not have enough tokens to start")
+			}
 			//request to start game
 			out = gammaCli.Run("send-tx battleShip/jsons/startGame.json -arg1 " + hashedShips + " -signer user" + strconv.Itoa(user))
 			resp.getResponse(out)
@@ -223,6 +230,7 @@ func main() {
 			}
 			doContinue := false
 			if event == "approve your board" || panics == "both players need to approve their board" {
+
 				out = gammaCli.Run("send-tx battleShip/jsons/approveBoard.json -arg1 " + secretKey + " -arg2 " + hex.EncodeToString(marshaledShips) + " -signer user" + strconv.Itoa(user))
 				for {
 					out = gammaCli.Run("send-tx battleship/jsons/finishGame.json -signer user" + strconv.Itoa(user))
@@ -234,7 +242,7 @@ func main() {
 						out = gammaCli.Run("send-tx battleShip/jsons/checkIfWon.json -signer user" + strconv.Itoa(user))
 						resp.getResponse(out)
 						if resp.OutputArguments[0].Value == "1" {
-							log.Fatal("you lost... try not to lose next time... maybe that way you'll win")
+							log.Fatal("you lost :-(")
 						}
 						if resp.OutputArguments[0].Value == "2" {
 							log.Fatal("congratulations! you won")
@@ -372,7 +380,7 @@ func main() {
 			fmt.Println("quit game")
 
 		} else if input == "test" {
-			out = gammaCli.Run("send-tx battleShip/jsons/getPlayersAddress.json -signer user" + strconv.Itoa(user))
+			out = gammaCli.Run("send-tx battleShip/jsons/test.json -signer user" + strconv.Itoa(user))
 			resp.getResponse(out)
 			fmt.Println(resp.OutputArguments[0])
 

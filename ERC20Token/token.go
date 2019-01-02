@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/orbs-network/orbs-contract-sdk/go/sdk"
 	"github.com/orbs-network/orbs-contract-sdk/go/sdk/address"
+	"github.com/orbs-network/orbs-contract-sdk/go/sdk/events"
 	"github.com/orbs-network/orbs-contract-sdk/go/sdk/state"
 	"math"
 )
@@ -58,7 +59,7 @@ func allowance(tokenOwner, spender []byte) (remaining uint64) {
 
 	return state.ReadUint64ByAddress(key)
 }
-
+func transferEvent(from, to []byte, tokens uint64) {}
 func transfer(to []byte, tokens uint64) {
 
 	//validate the address
@@ -70,10 +71,11 @@ func transfer(to []byte, tokens uint64) {
 	//update receiver's tokens
 	state.WriteUint64ByAddress(to, Add(state.ReadUint64ByAddress(to), tokens))
 
-	//TODO: add an event
+	events.EmitEvent(transferEvent, address.GetCallerAddress(), to, tokens)
 
 }
 
+func approveEvent(owner, spender []byte, tokens uint64) {}
 func approve(spender []byte, tokens uint64) {
 	//validate address
 	address.ValidateAddress(spender)
@@ -81,7 +83,7 @@ func approve(spender []byte, tokens uint64) {
 	key := append(address.GetCallerAddress(), spender...)
 	state.WriteUint64ByAddress(key, Add(state.ReadUint64ByAddress(key), tokens))
 
-	//TODO: add an event
+	events.EmitEvent(approveEvent, address.GetCallerAddress(), spender, tokens)
 }
 
 func transferFrom(from, to []byte, tokens uint64) {

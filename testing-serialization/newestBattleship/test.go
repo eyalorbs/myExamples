@@ -1,66 +1,92 @@
 package main
 
-/*
-
 import (
 	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/orbs-network/orbs-contract-sdk/go/sdk/address"
 	"github.com/orbs-network/orbs-contract-sdk/go/sdk/state"
-	"github.com/orbs-network/orbs-network-go/crypto/hash"
-	"log"
+	"math"
 )
 
+func shipsOk(boats ships) (ok bool, shipCoordinates []coordinate) {
+	//if there aren't 5 boars return false
+	if len(boats) != 5 {
+		return false, nil
+	}
+	//go over each boat
+	for _, val := range boats {
+		//check if boat is diagonal
+		fmt.Println(val.headCoordinates.Y, val.tailCoordinates.Y)
+		if val.headCoordinates.X != val.tailCoordinates.X && val.headCoordinates.Y != val.tailCoordinates.Y {
+			return false, nil
+		}
+		//check if coordinates are in range
+		if 10 < val.headCoordinates.X || 10 < val.headCoordinates.Y || 10 < val.tailCoordinates.X || 10 < val.tailCoordinates.Y {
+			return false, nil
+		}
+
+		//check if length is ok
+		var length uint8
+		switch val.name {
+		case "Carrier":
+			length = 5
+
+		case "Battleship":
+			length = 4
+
+		case "Cruiser":
+			length = 3
+
+		case "Submarine":
+			length = 3
+
+		case "Destroyer":
+			length = 2
+
+		default:
+			return false, nil
+		}
+		if uint8(math.Abs(float64(val.headCoordinates.X)-float64(val.tailCoordinates.X)))+1 != length && uint8(math.Abs(float64(val.headCoordinates.Y)-float64(val.tailCoordinates.Y)))+1 != length {
+			fmt.Println(val.tailCoordinates.X - val.headCoordinates.X)
+			return false, nil
+		}
+
+		//add all of the coordinates to a slice and return it, if there is overlap return false
+		for i := uint8(math.Min(float64(val.headCoordinates.X), float64(val.tailCoordinates.X))); i <= uint8(math.Max(float64(val.headCoordinates.X), float64(val.tailCoordinates.X))); i++ {
+			for j := uint8(math.Min(float64(val.headCoordinates.Y), float64(val.tailCoordinates.Y))); j <= uint8(math.Max(float64(val.headCoordinates.Y), float64(val.tailCoordinates.Y))); j++ {
+				for _, coor := range shipCoordinates {
+					currentCoo := coordinate{i, j}
+					if currentCoo == coor {
+
+						return false, nil
+					}
+					shipCoordinates = append(shipCoordinates, currentCoo)
+				}
+			}
+		}
+	}
+	return true, shipCoordinates
+}
+
 func main() {
-	fmt.Println(hex.EncodeToString(hash.CalcRipemd160Sha256([]byte("tokenBridge"))))
+	boats := ships{}
+	var boat1 ship
+	var boat2 ship
+	var boat3 ship
+	var boat4 ship
+	var boat5 ship
+	boat1.new("Carrier", 1, 1, 5, 1)
+	boat2.new("Battleship", 2, 2, 5, 2)
+	boat3.new("Cruiser", 3, 3, 5, 3)
+	boat4.new("Submarine", 4, 4, 6, 4)
+	boat5.new("Destroyer", 5, 5, 6, 5)
+	boats = ships{boat1, boat2, boat3, boat4, boat5}
 
-		player1 := []byte{42, 2, 5, 1, 5}
-		player2 := []byte{26, 26, 2, 25}
-		boardHashed := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2}
-		playerHits := uint8(0)
-		defaultGuesses := guesses{}
-		playerTurn := true
-		defaultLastGuesses := coordinate{}
-		boardApproved := uint8(3)
-
-		thisGame := game{player1, player2, boardHashed, boardHashed, playerHits, playerHits, defaultGuesses, defaultGuesses, playerTurn, defaultLastGuesses, boardApproved, boardApproved}
-		fmt.Println(thisGame)
-		b, err := thisGame.MarshalJSON()
-		if err != nil {
-			log.Fatal(err)
-		}
-		var dec game
-		err = dec.UnmarshalJSON(b)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Println(dec)
-
-		b, err = hex.DecodeString("7b2230223a22635262694275327544304a47652f647456756f46456b6c4d7942493d222c2231223a22683038636f3878644843465a3977596d776430643242694b2b35593d222c223130223a2241673d3d222c223131223a2241773d3d222c2232223a223650784162643466563739373946554f784247553446547259525862316f416d54706a4e7043764d4e77553d222c2233223a22794264506466724f353935536532664b6d5a54323250726c7a2f49706561517234314f495a784c394866593d222c2234223a2245513d3d222c2235223a2244413d3d222c2236223a2265794977496a6f695a586c4a4e45394453545a4e553364705430527261553971526a6c4255543039496977694d534936496d56355354525051306b3254576c336155394561326c50616b59355156453950534973496a4577496a6f695a586c4a4e45394453545a4f513364705430527261553971546a6c4255543039496977694d5445694f694a6c65556b3054304e4a4e6b355464326c50524774705432704f4f554652505430694c4349784d694936496d56355354525051306b32546b4e336155394561326c50616c49355156453950534973496a457a496a6f695a586c4a4e45394453545a4f553364705430527261553971556a6c4255543039496977694d5451694f694a6c65556b3054304e4a4e6b357064326c5052477470543270534f554652505430694c4349784e534936496d56355354525051306b32546c4e336155394561326c50616c59355156453950534973496a4532496a6f695a586c4a4e45394453545a4f615864705430527261553971566a6c4255543039496977694d694936496d56355354525051306b3254586c336155394561326c50616b59355156453950534973496a4d694f694a6c65556b3054304e4a4e6b354464326c5052477470543270474f554652505430694c434930496a6f695a586c4a4e45394453545a4f553364705430527261553971526a6c4255543039496977694e534936496d56355354525051306b3254576c336155394561326c50616b6f355156453950534973496a59694f694a6c65556b3054304e4a4e6b313564326c50524774705432704b4f554652505430694c434933496a6f695a586c4a4e45394453545a4f513364705430527261553971536a6c4255543039496977694f434936496d56355354525051306b32546c4e336155394561326c50616b6f355156453950534973496a6b694f694a6c65556b3054304e4a4e6b313564326c50524774705432704f4f5546525054306966513d3d222c2237223a2265794977496a6f695a586c4a4e45394453545a4e553364705430527261553971526a6c4251543039496977694d534936496d56355354525051306b3254576c336155394561326c50616b59355155453950534973496a4577496a6f695a586c4a4e45394453545a4f513364705430527261553971546a6c4255543039496977694d5445694f694a6c65556b3054304e4a4e6b355464326c50524774705432704f4f554652505430694c4349784d694936496d56355354525051306b32546b4e336155394561326c50616c49355156453950534973496a457a496a6f695a586c4a4e45394453545a4f553364705430527261553971556a6c4255543039496977694d5451694f694a6c65556b3054304e4a4e6b357064326c5052477470543270534f554652505430694c4349784e534936496d56355354525051306b32546c4e336155394561326c50616c59355156453950534973496a49694f694a6c65556b3054304e4a4e6b313564326c5052477470543270474f554642505430694c43497a496a6f695a586c4a4e45394453545a4f513364705430527261553971526a6c4251543039496977694e434936496d56355354525051306b32546c4e336155394561326c50616b59355156453950534973496a55694f694a6c65556b3054304e4a4e6b317064326c50524774705432704b4f554652505430694c434932496a6f695a586c4a4e45394453545a4e655864705430527261553971536a6c4255543039496977694e794936496d56355354525051306b32546b4e336155394561326c50616b6f355156453950534973496a67694f694a6c65556b3054304e4a4e6b355464326c50524774705432704b4f554652505430694c434935496a6f695a586c4a4e45394453545a4e655864705430527261553971546a6c4255543039496e303d222c2238223a2241413d3d222c2239223a22657949344f4349364d4377694f446b694f6a4239227d")
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = dec.UnmarshalJSON(b)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Println(dec)
-
-
-		var boats ships
-		b, err = hex.DecodeString("7b2230223a2265794977496a6f6955544a4765574e746247786a5a7a3039496977694d534936496d56355354525051306b3254564e336155394561326c50616b6f35496977694d694936496d56355354525051306b3254586c336155394561326c50616c4935496e303d222c2231223a2265794977496a6f69555731474d4752486547786a4d6d68775930453950534973496a45694f694a6c65556b3054304e4a4e6b317064326c50524774705432704f4f534973496a49694f694a6c65556b3054304e4a4e6b354464326c5052477470543270574f534a39222c2232223a2265794977496a6f6955544e4b4d574659546d786a5a7a3039496977694d534936496d56355354525051306b3254586c336155394561326c50616c4935496977694d694936496d56355354525051306b32546c4e336155394561326c50616c6f35496e303d222c2233223a2265794977496a6f6956544e5761574a58526e6c68567a5673496977694d534936496d56355354525051306b32546b4e336155394561326c50616c5935496977694d694936496d56355354525051306b32546d6c336155394561326c50616d5135496e303d222c2234223a2265794977496a6f69556b6457656d5249536e5a6c56315a35496977694d534936496d56355354525051306b32546c4e336155394561326c50616c6f35496977694d694936496d56355354525051306b32546e6c336155394561326c50616d6735496e303d227d")
-		if err != nil{
-			log.Fatal(err)
-		}
-		err = boats.UnmarshalJSON(b)
-		if err != nil{
-			log.Fatal(err)
-		}
-		fmt.Println(boats)
+	ok, _ := shipsOk(boats)
+	fmt.Println(ok)
 }
 
 type coordinate struct {
@@ -139,7 +165,6 @@ func (guesses *guesses) UnmarshalJSON(b []byte) (err error) {
 	}
 	return nil
 }
-
 func (guesses *guesses) exists(coo coordinate) (exists bool) {
 	//return true if the coordinate exists in the previous guesses
 	for _, value := range guesses.playerGuesses {
@@ -251,12 +276,12 @@ func (game *game) UnmarshalJSON(b []byte) (err error) {
 
 }
 func (game *game) panicIfNotTurn() {
-	signerAddress := address.GetSignerAddress()
-	if bytes.Equal(signerAddress, game.Player1) {
+	callerAddress := address.GetCallerAddress()
+	if bytes.Equal(callerAddress, game.Player1) {
 		if !game.Player1Turn {
 			panic("not your turn, wait for your turn")
 		}
-	} else if bytes.Equal(signerAddress, game.Player2) {
+	} else if bytes.Equal(callerAddress, game.Player2) {
 		if game.Player1Turn {
 			panic("not your turn, wait for your turn")
 		}
@@ -265,12 +290,12 @@ func (game *game) panicIfNotTurn() {
 	}
 }
 func (game *game) panicIfTurn() {
-	signerAddress := address.GetSignerAddress()
-	if bytes.Equal(signerAddress, game.Player1) {
+	callerAddress := address.GetCallerAddress()
+	if bytes.Equal(callerAddress, game.Player1) {
 		if game.Player1Turn {
 			panic("it is your turn, you cannot validate ship")
 		}
-	} else if bytes.Equal(signerAddress, game.Player2) {
+	} else if bytes.Equal(callerAddress, game.Player2) {
 		if !game.Player1Turn {
 			panic("it is your turn, you cannot validate ship")
 		}
@@ -280,10 +305,10 @@ func (game *game) panicIfTurn() {
 }
 
 func (game *game) updateGuesses(coo coordinate) {
-	signerAddress := address.GetSignerAddress()
-	if bytes.Equal(signerAddress, game.Player1) {
+	callerAddress := address.GetCallerAddress()
+	if bytes.Equal(callerAddress, game.Player1) {
 		game.Player1Guesses.playerGuesses = append(game.Player1Guesses.playerGuesses, coo)
-	} else if bytes.Equal(signerAddress, game.Player2) {
+	} else if bytes.Equal(callerAddress, game.Player2) {
 		game.Player2Guesses.playerGuesses = append(game.Player2Guesses.playerGuesses, coo)
 	} else {
 		panic("you are not registered in this game")
@@ -418,4 +443,3 @@ func (boats *ships) sha256(sk string) (sha []byte, err error) {
 	return h.Sum(nil), nil
 
 }
-*/

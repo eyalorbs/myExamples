@@ -3,7 +3,7 @@
   "MethodName": "allowance",
   "Arguments": [
     {
-      "Type": "gamma:keys-file-address",
+      "Type": "bytes",
       "Value": "user1"
     },
     {
