@@ -7,18 +7,18 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/orbs-network/orbs-contract-sdk/go/testing/gamma"
 	"github.com/orbs-network/orbs-network-go/crypto/hash"
 	"github.com/pkg/errors"
 	"log"
 	"math"
+	"myExamples/silentGamma"
 	"os"
 	"strconv"
 	"strings"
 )
 
 func main() {
-	gammaCli := gamma.Cli().Start()
+	gammaCli := silentGamma.Cli().Start()
 	defer gammaCli.Stop()
 	//set the reader
 	reader := bufio.NewReader(os.Stdin)
@@ -29,56 +29,55 @@ func main() {
 	//get the ships
 	boats := ships{}
 	//user interface to get ships
-	/*
-		for i := 0; i < 5; i++ {
-			var boat ship
-			fmt.Println("enter the name of the ship")
-			name, _ := reader.ReadString('\n')
-			fmt.Println("enter headX, headY, tailX, tailY")
-			var headX uint8
-			var headY uint8
-			var tailX uint8
-			var tailY uint8
-			_, err := fmt.Scanf("%d", &headX)
-			if err != nil {
-				log.Fatal(err)
-			}
-			_, err = fmt.Scanf("%d", &headY)
-			if err != nil {
-				log.Fatal(err)
-			}
-			_, err = fmt.Scanf("%d", &tailX)
-			if err != nil {
-				log.Fatal(err)
-			}
-			_, err = fmt.Scanf("%d", &tailY)
-			if err != nil {
-				log.Fatal(err)
-			}
 
-			boat.new(name, headX, headY, tailX, tailY)
-			boats = append(boats, boat)
+	for i := 0; i < 5; i++ {
+		var boat ship
+		fmt.Println("enter the name of the ship")
+		name, _ := reader.ReadString('\n')
+		fmt.Println("enter headX, headY, tailX, tailY")
+		var headX uint8
+		var headY uint8
+		var tailX uint8
+		var tailY uint8
+		_, err := fmt.Scanf("%d", &headX)
+		if err != nil {
+			log.Fatal(err)
+		}
+		_, err = fmt.Scanf("%d", &headY)
+		if err != nil {
+			log.Fatal(err)
+		}
+		_, err = fmt.Scanf("%d", &tailX)
+		if err != nil {
+			log.Fatal(err)
+		}
+		_, err = fmt.Scanf("%d", &tailY)
+		if err != nil {
+			log.Fatal(err)
 		}
 
+		boat.new(name, headX, headY, tailX, tailY)
+		boats = append(boats, boat)
+	}
+
+	/*
+		//auto generated ships
+		var boat1 ship
+		var boat2 ship
+		var boat3 ship
+		var boat4 ship
+		var boat5 ship
+		boat1.new("Carrier", 1, 1, 5, 1)
+		boat2.new("Battleship", 2, 2, 5, 2)
+		boat3.new("Cruiser", 3, 3, 5, 3)
+		boat4.new("Submarine", 4, 4, 6, 4)
+		boat5.new("Destroyer", 5, 5, 6, 5)
+		boats = ships{boat1, boat2, boat3, boat4, boat5}
 	*/
-
-	//auto generated ships
-	var boat1 ship
-	var boat2 ship
-	var boat3 ship
-	var boat4 ship
-	var boat5 ship
-	boat1.new("Carrier", 1, 1, 5, 1)
-	boat2.new("Battleship", 2, 2, 5, 2)
-	boat3.new("Cruiser", 3, 3, 5, 3)
-	boat4.new("Submarine", 4, 4, 6, 4)
-	boat5.new("Destroyer", 5, 5, 6, 5)
-	boats = ships{boat1, boat2, boat3, boat4, boat5}
-
 	//variables for the loop:
 
 	//get the secret key
-	fmt.Println("enter your super secret confidential secret key, don't tell anyone or you'll suffer from the devastating effects of losing to a cheater")
+	fmt.Println("enter your super secret confidential secret key, you don't need to remember it, but don't tell anyone")
 	secretKey, _ := reader.ReadString('\n')
 
 	//get the hashed string
@@ -366,6 +365,11 @@ func main() {
 
 		} else if input == "quit" {
 			out = gammaCli.Run("send-tx battleShip/jsons/quitGame.json -signer user" + strconv.Itoa(user))
+			if !strings.Contains(out, `"ExecutionResult": "SUCCESS"`) {
+				fmt.Println("failed to quit")
+				continue
+			}
+			fmt.Println("quit game")
 
 		} else if input == "test" {
 			out = gammaCli.Run("send-tx battleShip/jsons/getPlayersAddress.json -signer user" + strconv.Itoa(user))
