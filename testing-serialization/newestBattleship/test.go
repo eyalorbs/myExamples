@@ -1,5 +1,8 @@
 package main
 
+import "fmt"
+
+/*
 import (
 	"bytes"
 	"crypto/hmac"
@@ -443,3 +446,4 @@ func (boats *ships) sha256(sk string) (sha []byte, err error) {
 	return h.Sum(nil), nil
 
 }
+*/
