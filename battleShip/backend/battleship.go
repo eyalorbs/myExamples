@@ -18,7 +18,7 @@ import (
 var PUBLIC = sdk.Export(startGame, getOpponentStatus, guess, updateHit, quitGame, getMyHits, approveBoard, checkIfWon, checkIfInGame, didOpponentUpdateHit, getIfWonLastGame, test)
 var SYSTEM = sdk.Export(_init, panicIfCallerPlaying, PanicIfCallerNotPlaying, shipsOk, didLie, PanicIfOneOfPlayersApprovedBoard)
 
-//this function only exitst for the purpose of seeing all of the fields relevant game that is on the state
+//this function only exists for the purpose of seeing all of the fields relevant game that is on the state
 func test() []byte {
 	games := make(games)
 	games.getGamesFromState()
@@ -202,8 +202,8 @@ func PanicIfOneOfPlayersApprovedBoard() {
 //checks if the caller has won the last game
 //it calls a contract that keeps track
 //1 means that there is no previous game
-//2 means that the player lost
-//3 means that the player won
+//2 means that the player lost the previous game
+//3 means that the player won the previous game
 func getIfWonLastGame() (didWin uint32) {
 	panicIfCallerPlaying()
 	return service.CallMethod("winnerContract", "getWinner", address.GetCallerAddress())[0].(uint32)
@@ -388,7 +388,6 @@ func getOpponentStatus() (x, y uint32) {
 	return uint32(opponentGuess.X), uint32(opponentGuess.Y)
 }
 
-func updateHitEmit(feedback string) {}
 func updateHit(hit uint32) {
 	PanicIfCallerNotPlaying()
 	//get the relevant game
@@ -517,7 +516,7 @@ func quitGame() {
 }
 
 func shipsOkEvent(feedback string) {}
-func approveBoard(secretKey string, Marshaledships []byte) {
+func approveBoard(secretKey string, marshaledships []byte) {
 	PanicIfCallerNotPlaying()
 
 	//get the relevant game
@@ -529,7 +528,7 @@ func approveBoard(secretKey string, Marshaledships []byte) {
 	approve := true
 	//get the board the player claims to have
 	boats := ships{}
-	err := boats.UnmarshalJSON(Marshaledships)
+	err := boats.UnmarshalJSON(marshaledships)
 	if err != nil {
 		approve = false
 	}
@@ -654,8 +653,7 @@ func checkIfWon() {
 
 }
 
-//structs and methods
-
+//structs and methods:
 type coordinate struct {
 	X uint8
 	Y uint8

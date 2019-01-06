@@ -7,11 +7,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/orbs-network/orbs-contract-sdk/go/testing/gamma"
 	"github.com/orbs-network/orbs-network-go/crypto/hash"
 	"github.com/pkg/errors"
 	"log"
 	"math"
+	"myExamples/silentGamma"
 	"os"
 	"strconv"
 	"strings"
@@ -19,7 +19,7 @@ import (
 
 func main() {
 	fmt.Println("starting gamma...")
-	gammaCli := gamma.Cli().Start()
+	gammaCli := silentGamma.Cli().Start()
 	fmt.Println("gamma started")
 	defer gammaCli.Stop()
 	//set the reader
@@ -96,7 +96,7 @@ func main() {
 	numOfHits := uint8(0)
 
 	//get the user
-	fmt.Println("\nwhat user are you?")
+	fmt.Println("\nwhich user are you?")
 	var user int
 	_, err = fmt.Scanf("%d", &user)
 	if err != nil {
@@ -125,7 +125,8 @@ func main() {
 		if input == "startGame" {
 			out = gammaCli.Run("send-tx ERC20Token/jsons/approve.json -arg1 " + hex.EncodeToString(hash.CalcRipemd160Sha256([]byte("tokenBridge"))) + " -arg2 5 -signer user" + strconv.Itoa(user))
 			if !strings.Contains(out, `"ExecutionResult": "SUCCESS"`) {
-				log.Fatal("you do not have enough tokens to start")
+				fmt.Println("you do not have enough tokens to start")
+				continue
 			}
 			//request to start game
 			out = gammaCli.Run("send-tx battleShip/jsons/startGame.json -arg1 " + hashedShips + " -signer user" + strconv.Itoa(user))
@@ -217,7 +218,6 @@ func main() {
 				fmt.Println("invalid coordinate")
 				continue
 			}
-			fmt.Println("coordinates received")
 
 			//run command and get response
 			out = gammaCli.Run("send-tx battleShip/jsons/guess.json -arg1 " + strconv.Itoa(int(x)) + " -arg2 " + strconv.Itoa(int(y)) + " -signer user" + strconv.Itoa(user))
@@ -311,7 +311,7 @@ func main() {
 								out = gammaCli.Run("send-tx battleShip/jsons/checkIfWon.json -signer user" + strconv.Itoa(user))
 								resp.getResponse(out)
 								if resp.OutputArguments[0].Value == "1" {
-									log.Fatal("you lost... try not to lose next time... maybe that way you'll win")
+									log.Fatal("you lost... try not to lose next time...")
 								}
 								if resp.OutputArguments[0].Value == "2" {
 									log.Fatal("congratulations! you won")
@@ -329,7 +329,7 @@ func main() {
 					//if missed
 				} else {
 					fmt.Println("you missed :-(")
-					board[x-1][y-1] = 'O'
+					board[x-1][y-1] = 'o'
 					board.printBoard()
 				}
 
@@ -761,6 +761,7 @@ func (board *Board) printBoard() {
 	for i := 0; i < 10; i++ {
 		for j := 0; j < 10; j++ {
 			fmt.Print(string(board[i][j]))
+			fmt.Print("  ")
 		}
 		fmt.Println("")
 	}
